@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulateur Business Case Partenaire — Grafana Labs</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --bg:#171717; --surface:#1F1F1F; --surface-2:#2A2A2A; --border:#3A3A3A;
+  --text:#FFFFFF; --text-2:#AFAFAF; --orange:#FF671D; --blue:#2970FF;
+  --green:#04BC4C; --yellow:#FFED23; --purple:#D444F1; --red:#E24B4A;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;}
+h1,h2,h3,h4{font-family:'Poppins',sans-serif;margin:0 0 8px;font-weight:600;}
+h1{font-size:20px;} h2{font-size:17px;} h3{font-size:14px;color:var(--text-2);text-transform:uppercase;letter-spacing:.04em;font-weight:600;}
+h4{font-size:13px;color:var(--orange);margin:16px 0 6px;}
+p{line-height:1.6;color:#E6E6E6;}
+a{color:var(--orange);}
+header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;}
+header .brand{display:flex;align-items:center;gap:10px;}
+header .brand .dot{width:12px;height:12px;border-radius:50%;background:var(--orange);}
+header .sub{color:var(--text-2);font-size:12px;}
+.header-right{display:flex;align-items:center;gap:16px;}
+.langsw{display:flex;gap:2px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:2px;}
+.langsw button{background:none;border:none;color:var(--text-2);font-size:11px;font-weight:700;padding:5px 9px;border-radius:6px;cursor:pointer;font-family:inherit;}
+.langsw button.on{background:var(--orange);color:#1a1a1a;}
+.layout{display:grid;grid-template-columns:380px 1fr;gap:0;min-height:calc(100vh - 57px);}
+.panel-form{background:var(--surface);border-right:1px solid var(--border);padding:20px;overflow-y:auto;max-height:calc(100vh - 57px);}
+.panel-results{padding:20px 28px;overflow-y:auto;max-height:calc(100vh - 57px);}
+fieldset{border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin:0 0 14px;}
+legend{font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:var(--orange);padding:0 6px;}
+label{display:block;font-size:12px;color:var(--text-2);margin:8px 0 3px;}
+input[type=text],input[type=number],select{width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 9px;font-size:13px;}
+input[type=range]{width:100%;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.svc-group{margin:6px 0 10px;}
+.svc-group .cat{font-size:11px;color:var(--text-2);margin:8px 0 4px;font-weight:600;}
+.pill{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--border);border-radius:16px;padding:5px 10px;margin:3px 4px 0 0;font-size:12px;cursor:pointer;}
+.pill input{margin:0;}
+details summary{cursor:pointer;color:var(--text-2);font-size:12px;margin:4px 0;}
+button{font-family:'Poppins',sans-serif;font-weight:600;border:none;border-radius:6px;padding:10px 16px;cursor:pointer;font-size:13px;}
+.btn-primary{background:var(--orange);color:#1a1a1a;width:100%;margin-top:6px;}
+.btn-secondary{background:transparent;border:1px solid var(--border);color:var(--text);}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:18px;position:sticky;top:0;background:var(--bg);padding-top:2px;z-index:10;}
+.tab-btn{background:transparent;color:var(--text-2);padding:9px 14px;border-radius:6px 6px 0 0;font-size:13px;}
+.tab-btn.active{color:var(--orange);background:var(--surface);border:1px solid var(--border);border-bottom:2px solid var(--orange);}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+.scenario-switch{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
+.scenario-switch button{background:var(--surface-2);color:var(--text-2);border:1px solid var(--border);padding:8px 14px;}
+.scenario-switch button.active{background:var(--orange);color:#1a1a1a;border-color:var(--orange);}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+.card .lbl{font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:.03em;}
+.card .val{font-size:22px;font-weight:600;font-family:'Poppins',sans-serif;margin-top:4px;}
+.card .val.orange{color:var(--orange);} .card .val.blue{color:var(--blue);} .card .val.green{color:var(--green);}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin:10px 0 20px;}
+th,td{border-bottom:1px solid var(--border);padding:7px 8px;text-align:left;}
+th{color:var(--text-2);font-weight:600;font-size:11.5px;text-transform:uppercase;}
+tr:hover td{background:var(--surface-2);}
+.num{text-align:right;font-variant-numeric:tabular-nums;}
+.chart-box{position:relative;height:280px;margin:10px 0 26px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.chart-box.small{height:230px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.note{background:var(--surface-2);border-left:3px solid var(--orange);padding:10px 12px;border-radius:6px;font-size:12.5px;color:var(--text-2);margin:10px 0 20px;}
+.note.warn{border-left-color:var(--yellow);color:var(--yellow);}
+.reclist{margin:0 0 18px;padding-left:18px;}
+.reclist li{margin-bottom:8px;line-height:1.5;}
+pre{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:11.5px;overflow:auto;max-height:520px;color:#C8E6A0;}
+.warn{color:var(--yellow);}
+.inline-flex{display:flex;gap:6px;align-items:stretch;}
+.inline-flex input{flex:1;}
+.inline-flex button{white-space:nowrap;padding:7px 10px;font-size:12px;}
+.stl-slider{display:flex;align-items:center;gap:10px;}
+.stl-slider span{font-weight:600;color:var(--orange);min-width:44px;text-align:right;}
+#printHeader{display:none;}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--orange);outline-offset:2px;}
+@media (max-width:900px){.layout{grid-template-columns:1fr;} .panel-form{max-height:none;} .grid2{grid-template-columns:1fr;}}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.001ms !important;animation-duration:.001ms !important;}}
+@media print{
+  header,.panel-form,.scenario-switch,.tabs{display:none !important;}
+  .layout{grid-template-columns:1fr;}
+  .panel-results{max-height:none;overflow:visible;padding:0;}
+  .tab-panel{display:none !important;}
+  #tab-summary{display:block !important;}
+  #printHeader{display:block !important;margin-bottom:16px;}
+  body{background:#fff;color:#111;}
+  .card,.chart-box,pre{background:#fff;border-color:#ccc;}
+  .card .val,h1,h2,h3,h4,p{color:#111 !important;}
+  .card .lbl{color:#555 !important;}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="dot"></div>
+    <div>
+      <h1 style="margin:0;" data-i18n="brandTitle">Simulateur Business Case Partenaire</h1>
+      <div class="sub" data-i18n="brandSub">Grafana Labs — Go-To-Market &amp; valorisation des services</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="langsw" id="langsw" role="group" aria-label="Language / Langue">
+      <button data-l="fr" onclick="setLang('fr')" aria-label="Français">FR</button>
+      <button data-l="en" onclick="setLang('en')" aria-label="English">EN</button>
+    </div>
+    <div class="sub" id="genDate"></div>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="panel-form">
+    <fieldset>
+      <legend data-i18n="legendPartner">Informations partenaire</legend>
+      <label data-i18n="lblPartnerType">Type de partenaire</label>
+      <select id="partnerType">
+        <option>Global System Integrator (GSI)</option>
+        <option selected>System Integrator (SI)</option>
+        <option>Managed Service Provider (MSP)</option>
+        <option>VAR</option>
+        <option>MSSP</option>
+        <option>Cloud Provider</option>
+        <option>Consulting Firm</option>
+      </select>
+      <div class="row2">
+        <div><label data-i18n="lblCountry">Pays</label><input type="text" id="country" value="France"></div>
+        <div><label data-i18n="lblSize">Taille (employés)</label><input type="number" id="companySize" value="250"></div>
+      </div>
+      <div class="row2">
+        <div><label data-i18n="lblConsultants">Consultants</label><input type="number" id="nbConsultants" value="40"></div>
+        <div><label data-i18n="lblArchitects">Architectes</label><input type="number" id="nbArchitects" value="8"></div>
+      </div>
+      <div class="row2">
+        <div><label data-i18n="lblEngineers">Ingénieurs</label><input type="number" id="nbEngineers" value="15"></div>
+        <div><label data-i18n="lblSales">Commerciaux</label><input type="number" id="nbSales" value="6"></div>
+      </div>
+      <label data-i18n="lblActiveClients">Clients actifs</label><input type="number" id="nbActiveClients" value="180">
+      <label data-i18n="lblSectors">Secteurs adressés</label><input type="text" id="sectors" value="Finance, Retail, Secteur public">
+      <label><span data-i18n="lblObsMaturity">Maturité observability (1-5)</span> : <span id="obsMaturityOut">3</span></label>
+      <input type="range" id="obsMaturity" min="1" max="5" value="3" step="1">
+      <div class="row2">
+        <div><label data-i18n="lblShareServices">% CA Services</label><input type="number" id="shareServices" value="55"></div>
+        <div><label data-i18n="lblShareSoftware">% CA Logiciel</label><input type="number" id="shareSoftware" value="25"></div>
+      </div>
+      <label data-i18n="lblShareManaged">% CA Managed Services</label><input type="number" id="shareManaged" value="20">
+    </fieldset>
+
+    <fieldset>
+      <legend data-i18n="legendCommercial">Hypothèses commerciales</legend>
+      <div class="row2">
+        <div><label data-i18n="lblTargeted">Clients Grafana ciblés</label><input type="number" id="targetedClients" value="30"></div>
+        <div><label data-i18n="lblConversion">Taux de conversion (%)</label><input type="number" id="conversionRate" value="35"></div>
+      </div>
+      <label data-i18n="lblProjPerClient">Projets / client (moy.)</label><input type="number" id="avgProjectsPerClient" value="1.5" step="0.1">
+      <div class="row2">
+        <div><label data-i18n="lblTJM">TJM moyen (€)</label><input type="number" id="avgDailyRate" value="950"></div>
+        <div><label data-i18n="lblDaysPerProject">Jours de service / projet</label><input type="number" id="serviceDaysPerProject" value="47"></div>
+      </div>
+      <div class="note" id="projectValueOut">—</div>
+      <div class="row2">
+        <div><label data-i18n="lblMarginRate">Taux de marge (%)</label><input type="number" id="marginRate" value="35"></div>
+        <div><label data-i18n="lblRecurringPct">% services récurrents</label><input type="number" id="recurringServicesPct" value="40"></div>
+      </div>
+      <label data-i18n="lblContractDur">Durée moy. des contrats (mois)</label><input type="number" id="avgContractDurationMonths" value="24">
+      <label data-i18n="lblRatioSTL">Ratio Services : Licence — hypothèse clé du modèle</label>
+      <div class="stl-slider">
+        <input type="range" id="servicesToLicenseRatio" min="1" max="10" step="0.5" value="4">
+        <span id="stlOut">4</span>
+      </div>
+      <div class="note" data-i18n="noteRatio">Chaque 1 € de licence Grafana entraîne ce multiple en revenus de services associés. C'est le levier le plus déterminant du Business Case — voir l'onglet Business Case pour l'analyse de sensibilité.</div>
+    </fieldset>
+
+    <fieldset>
+      <legend data-i18n="legendServices">Offres de services proposées</legend>
+      <div class="svc-group">
+        <div class="cat" data-i18n="catImpl">Implémentation</div>
+        <label class="pill"><input type="checkbox" class="svc" data-bucket="ps" data-id="assessment" checked>Assessment</label>
+        <label class="pill"><input type="checkbox" class="svc" data-bucket="ps" data-id="architecture" checked>Architecture</label>
+        <label class="pill"><input type="checkbox" class="svc" data-bucket="ps" data-id="migration" checked>Migration</label>
+        <label class="pill"><input type="checkbox" class="svc" data-bucket="ps" data-id="deployment" checked>Deployment</label>
+        <label class="pill"><input type="checkbox" class="svc" data-bucket="ps" data-id="dashboards" checked>Dashboards</label>
+        <label class="pill"><input type="checkbox" class="svc" data-bucket="ps" data-id="alerting" checked>Alerting</label>
+        <label class="pill"><input type="checkbox" class="svc" data-bucket="ps" data-id="observability" checked>Observability</label>
+        <label class="pill"><input type="checkbox" class="svc" data-bucket="ps" data-id="otel" checked>OpenTelemetry</label>
+        <label class="pill"><input type="checkbox" class="svc" data-bucket="ps" data-id="k8s" checked>Kubernetes Monitoring</label>
+        <label class="pill"><input type="checkbox" class="svc" data-bucket="ps" data-id="healthcheck" checked>Health Check</label>
+        <label class="pill"><input type="checkbox" class="svc" data-bucket="ps" data-id="perfopt">Performance Optimization</label>
+      </div>
+      <div class="svc-group">
+        <div class="cat" data-i18n="catAdvisory">Advisory / stratégique</div>
+        <label class="pill"><input type="checkbox" class="svc" data-bucket="advisory" data-id="finops" checked>FinOps</label>
+        <label class="pill"><input type="checkbox" class="svc" data-bucket="advisory" data-id="sre" checked>SRE</label>
+        <label class="pill"><input type="checkbox" class="svc" data-bucket="advisory" data-id="aiobs" checked>AI Observability</label>
+      </div>
+      <div class="svc-group">
+        <div class="cat" data-i18n="catManaged">Managed / récurrent</div>
+        <label class="pill"><input type="checkbox" class="svc" data-bucket="managed" data-id="managedgrafana" checked>Managed Grafana</label>
+        <label class="pill"><input type="checkbox" class="svc" data-bucket="managed" data-id="supportpremium" checked>Support Premium</label>
+        <label class="pill"><input type="checkbox" class="svc" data-bucket="managed" data-id="manageddetection">Managed Detection</label>
+      </div>
+      <div class="svc-group">
+        <div class="cat" data-i18n="catTraining">Formation</div>
+        <label class="pill"><input type="checkbox" class="svc" data-bucket="training" data-id="training" checked>Training</label>
+      </div>
+    </fieldset>
+
+    <details>
+      <summary data-i18n="summaryAdvanced">Hypothèses avancées (modifiable)</summary>
+      <label data-i18n="lblWeightsRaw">Poids bruts des catégories de services (%) — normalisés automatiquement au calcul selon les offres cochées</label>
+      <div class="row2">
+        <div><label data-i18n="lblPS">Prof. Services</label><input type="number" id="psWeight" value="55"></div>
+        <div><label data-i18n="lblManaged">Managed</label><input type="number" id="managedWeight" value="20"></div>
+      </div>
+      <div class="row2">
+        <div><label data-i18n="lblAdvisory">Advisory</label><input type="number" id="advisoryWeight" value="15"></div>
+        <div><label data-i18n="lblTraining">Formation</label><input type="number" id="trainingWeight" value="10"></div>
+      </div>
+      <div class="note" id="weightTotalOut">—</div>
+      <div class="row2">
+        <div><label data-i18n="lblSupportPct">Support en % de la licence</label><input type="number" id="supportAsPctOfLicense" value="20"></div>
+        <div><label data-i18n="lblWorkingDays">Jours facturables / consultant / an</label><input type="number" id="workingDaysPerYear" value="180"></div>
+      </div>
+      <label data-i18n="lblLicenseMargin">Marge licence / support (%)</label><input type="number" id="licenseMarginPct" value="80">
+      <label data-i18n="lblInvestment">Investissement partenaire (€) — suggestion basée sur la taille d'équipe</label>
+      <div class="inline-flex">
+        <input type="number" id="investment" value="168000">
+        <button type="button" class="btn-secondary" id="suggestInvestmentBtn" data-i18n="btnSuggest">Suggérer</button>
+      </div>
+      <label data-i18n="lblOpex">Ratio charges (OPEX) (%)</label><input type="number" id="opexRatio" value="25">
+      <div class="row2">
+        <div><label data-i18n="lblGrowthCons">Croissance annuelle — Conservateur (%)</label><input type="number" id="growthConservative" value="8"></div>
+        <div><label data-i18n="lblGrowthReal">Croissance annuelle — Réaliste (%)</label><input type="number" id="growthRealistic" value="18"></div>
+      </div>
+      <label data-i18n="lblGrowthAmb">Croissance annuelle — Ambitieux (%)</label><input type="number" id="growthAmbitious" value="30">
+    </details>
+
+    <button class="btn-primary" id="calcBtn" data-i18n="btnCalc">Calculer le Business Case</button>
+    <button class="btn-secondary" id="jsonBtn" style="width:100%;margin-top:8px;" data-i18n="btnJson">Exporter le JSON</button>
+    <label class="btn-secondary" for="loadJsonInput" style="width:100%;margin-top:8px;display:block;text-align:center;box-sizing:border-box;" data-i18n="btnLoad">Charger un cas (JSON)</label>
+    <input type="file" id="loadJsonInput" accept="application/json" style="display:none">
+    <button class="btn-secondary" id="printBtn" style="width:100%;margin-top:8px;" data-i18n="btnPrint">Imprimer la synthèse</button>
+  </div>
+
+  <div class="panel-results">
+    <div id="printHeader"></div>
+    <div class="scenario-switch">
+      <span style="color:var(--text-2);font-size:12px;align-self:center;margin-right:4px;" data-i18n="scnActiveLabel">Scénario actif :</span>
+      <button data-scn="conservative" data-i18n="scn_conservative">Conservateur</button>
+      <button data-scn="realistic" class="active" data-i18n="scn_realistic">Réaliste</button>
+      <button data-scn="ambitious" data-i18n="scn_ambitious">Ambitieux</button>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button class="tab-btn active" data-tab="summary" role="tab" aria-selected="true" data-i18n="tabSummary">Résumé exécutif</button>
+      <button class="tab-btn" data-tab="hyp" role="tab" aria-selected="false" data-i18n="tabHyp">Hypothèses</button>
+      <button class="tab-btn" data-tab="calc" role="tab" aria-selected="false" data-i18n="tabCalc">Calculs détaillés</button>
+      <button class="tab-btn" data-tab="bc" role="tab" aria-selected="false" data-i18n="tabBc">Business Case</button>
+      <button class="tab-btn" data-tab="roi" role="tab" aria-selected="false" data-i18n="tabRoi">ROI</button>
+      <button class="tab-btn" data-tab="scn" role="tab" aria-selected="false" data-i18n="tabScn">Scénarios</button>
+      <button class="tab-btn" data-tab="reco" role="tab" aria-selected="false" data-i18n="tabReco">Recommandations</button>
+      <button class="tab-btn" data-tab="fin" role="tab" aria-selected="false" data-i18n="tabFin">Tableau financier</button>
+      <button class="tab-btn" data-tab="json" role="tab" aria-selected="false" data-i18n="tabJson">JSON</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-summary" role="tabpanel">
+      <div class="cards" id="summaryCards"></div>
+      <div id="execSummaryText"></div>
+      <div class="chart-box small"><canvas id="chartRevenueMixSummary"></canvas></div>
+    </div>
+
+    <div class="tab-panel" id="tab-hyp" role="tabpanel">
+      <h2 data-i18n="hypH2">Récapitulatif des hypothèses saisies</h2>
+      <table id="hypTable"></table>
+    </div>
+
+    <div class="tab-panel" id="tab-calc" role="tabpanel">
+      <h2 data-i18n="calcH2">Calculs détaillés — scénario actif</h2>
+      <table id="calcTable"></table>
+      <div class="grid2">
+        <div>
+          <h4 data-i18n="calcCapacity">Capacité consultants</h4>
+          <div class="chart-box"><canvas id="chartCapacity"></canvas></div>
+        </div>
+        <div>
+          <h4 data-i18n="calcCagr">Croissance du revenu (CAGR)</h4>
+          <div class="chart-box"><canvas id="chartCagr"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-bc" role="tabpanel">
+      <h2 data-i18n="bcH2">Business Case</h2>
+      <div id="bcNarrative"></div>
+      <div class="grid2">
+        <div>
+          <h4 data-i18n="bcWaterfall">Waterfall du revenu</h4>
+          <div class="chart-box"><canvas id="chartWaterfall"></canvas></div>
+        </div>
+        <div>
+          <h4 data-i18n="bcMix">Revenue Mix (toutes lignes)</h4>
+          <div class="chart-box"><canvas id="chartRevenueMix"></canvas></div>
+        </div>
+      </div>
+      <h4 data-i18n="bcServices">Services Breakdown</h4>
+      <div class="chart-box"><canvas id="chartServicesBreakdown"></canvas></div>
+      <h4 data-i18n="bcSensH4">Sensibilité au ratio Services : Licence</h4>
+      <div class="note" data-i18n="bcSensNote">C'est l'hypothèse la plus déterminante du modèle : elle fixe directement le poids relatif des licences dans le chiffre d'affaires total généré.</div>
+      <div class="chart-box"><canvas id="chartSensitivity"></canvas></div>
+    </div>
+
+    <div class="tab-panel" id="tab-roi" role="tabpanel">
+      <h2 data-i18n="roiH2">Retour sur investissement</h2>
+      <div class="cards" id="roiCards"></div>
+      <div class="grid2">
+        <div>
+          <h4 data-i18n="roiTimeline">ROI Timeline (profit cumulé vs investissement)</h4>
+          <div class="chart-box"><canvas id="chartRoiTimeline"></canvas></div>
+        </div>
+        <div>
+          <h4 data-i18n="roiCashflow">Cash Flow annuel</h4>
+          <div class="chart-box"><canvas id="chartCashFlow"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-scn" role="tabpanel">
+      <h2 data-i18n="scnH2">Comparaison des scénarios</h2>
+      <table id="scnTable"></table>
+      <div class="chart-box"><canvas id="chartScenarios"></canvas></div>
+    </div>
+
+    <div class="tab-panel" id="tab-reco" role="tabpanel">
+      <h2 data-i18n="recoH2">Analyse et recommandations</h2>
+      <div id="analysisBlock"></div>
+      <h3 data-i18n="recoCourt">Court terme</h3><ul class="reclist" id="recoCourt"></ul>
+      <h3 data-i18n="recoMoyen">Moyen terme</h3><ul class="reclist" id="recoMoyen"></ul>
+      <h3 data-i18n="recoLong">Long terme</h3><ul class="reclist" id="recoLong"></ul>
+    </div>
+
+    <div class="tab-panel" id="tab-fin" role="tabpanel">
+      <h2 data-i18n="finH2">Tableau financier consolidé (5 ans, scénario actif)</h2>
+      <table id="finTable"></table>
+    </div>
+
+    <div class="tab-panel" id="tab-json" role="tabpanel">
+      <h2 data-i18n="jsonH2">Export JSON structuré</h2>
+      <p style="color:var(--text-2);" data-i18n="jsonP">Ce JSON contient l'ensemble des hypothèses et des résultats calculés (3 scénarios). Il peut être ré-importé via "Charger un cas (JSON)" ou consommé par une autre application.</p>
+      <pre id="jsonOut"></pre>
+    </div>
+
+  </div>
+</div>
+<script>
+/* ============================== I18N ============================== */
+let lang = (function(){
+  try{
+    const stored = localStorage.getItem('gpbc_lang');
+    if(stored==='fr'||stored==='en') return stored;
+    const nav = (navigator.languages && navigator.languages[0]) || navigator.language || 'fr';
+    return /^en\b/i.test(nav) ? 'en' : 'fr';
+  }catch(e){ return 'fr'; }
+})();
+function tx(v){ return (v && typeof v==='object' && !Array.isArray(v)) ? (v[lang]!=null?v[lang]:v.fr) : v; }
+function t(key, ...args){
+  const v = STR[key];
+  if(v==null) return key;
+  const val = (typeof v==='object' && !Array.isArray(v)) ? (v[lang]!=null?v[lang]:v.fr) : v;
+  return (typeof val==='function') ? val(...args) : val;
+}
+function locale(){ return lang==='en' ? 'en-US' : 'fr-FR'; }
+
+const STR = {
+  docTitle:{fr:"Simulateur Business Case Partenaire — Grafana Labs", en:"Partner Business Case Simulator — Grafana Labs"},
+  brandTitle:{fr:"Simulateur Business Case Partenaire", en:"Partner Business Case Simulator"},
+  brandSub:{fr:"Grafana Labs — Go-To-Market & valorisation des services", en:"Grafana Labs — Go-To-Market & services value"},
+  genPrefix:{fr:"Généré le ", en:"Generated on "},
+  legendPartner:{fr:"Informations partenaire", en:"Partner information"},
+  lblPartnerType:{fr:"Type de partenaire", en:"Partner type"},
+  lblCountry:{fr:"Pays", en:"Country"}, lblSize:{fr:"Taille (employés)", en:"Size (employees)"},
+  lblConsultants:{fr:"Consultants", en:"Consultants"}, lblArchitects:{fr:"Architectes", en:"Architects"},
+  lblEngineers:{fr:"Ingénieurs", en:"Engineers"}, lblSales:{fr:"Commerciaux", en:"Sales reps"},
+  lblActiveClients:{fr:"Clients actifs", en:"Active clients"}, lblSectors:{fr:"Secteurs adressés", en:"Sectors served"},
+  lblObsMaturity:{fr:"Maturité observability (1-5)", en:"Observability maturity (1-5)"},
+  lblShareServices:{fr:"% CA Services", en:"% revenue Services"}, lblShareSoftware:{fr:"% CA Logiciel", en:"% revenue Software"},
+  lblShareManaged:{fr:"% CA Managed Services", en:"% revenue Managed Services"},
+  legendCommercial:{fr:"Hypothèses commerciales", en:"Commercial assumptions"},
+  lblTargeted:{fr:"Clients Grafana ciblés", en:"Targeted Grafana clients"}, lblConversion:{fr:"Taux de conversion (%)", en:"Conversion rate (%)"},
+  lblProjPerClient:{fr:"Projets / client (moy.)", en:"Projects / client (avg.)"},
+  lblTJM:{fr:"TJM moyen (€)", en:"Avg. daily rate (€)"}, lblDaysPerProject:{fr:"Jours de service / projet", en:"Service days / project"},
+  lblMarginRate:{fr:"Taux de marge (%)", en:"Margin rate (%)"}, lblRecurringPct:{fr:"% services récurrents", en:"% recurring services"},
+  lblContractDur:{fr:"Durée moy. des contrats (mois)", en:"Avg. contract duration (months)"},
+  lblRatioSTL:{fr:"Ratio Services : Licence — hypothèse clé du modèle", en:"Services : License ratio — key model assumption"},
+  noteRatio:{fr:"Chaque 1 € de licence Grafana entraîne ce multiple en revenus de services associés. C'est le levier le plus déterminant du Business Case — voir l'onglet Business Case pour l'analyse de sensibilité.", en:"Each €1 of Grafana license drives this multiple in associated services revenue. It is the most decisive lever of the Business Case — see the Business Case tab for the sensitivity analysis."},
+  legendServices:{fr:"Offres de services proposées", en:"Services offered"},
+  catImpl:{fr:"Implémentation", en:"Implementation"}, catAdvisory:{fr:"Advisory / stratégique", en:"Advisory / strategic"},
+  catManaged:{fr:"Managed / récurrent", en:"Managed / recurring"}, catTraining:{fr:"Formation", en:"Training"},
+  summaryAdvanced:{fr:"Hypothèses avancées (modifiable)", en:"Advanced assumptions (editable)"},
+  lblWeightsRaw:{fr:"Poids bruts des catégories de services (%) — normalisés automatiquement au calcul selon les offres cochées", en:"Raw weights of service categories (%) — auto-normalized at compute time based on checked offerings"},
+  lblPS:{fr:"Prof. Services", en:"Prof. Services"}, lblManaged:{fr:"Managed", en:"Managed"},
+  lblAdvisory:{fr:"Advisory", en:"Advisory"}, lblTraining:{fr:"Formation", en:"Training"},
+  lblSupportPct:{fr:"Support en % de la licence", en:"Support as % of license"},
+  lblWorkingDays:{fr:"Jours facturables / consultant / an", en:"Billable days / consultant / year"},
+  lblLicenseMargin:{fr:"Marge licence / support (%)", en:"License / support margin (%)"},
+  lblInvestment:{fr:"Investissement partenaire (€) — suggestion basée sur la taille d'équipe", en:"Partner investment (€) — suggestion based on team size"},
+  btnSuggest:{fr:"Suggérer", en:"Suggest"},
+  lblOpex:{fr:"Ratio charges (OPEX) (%)", en:"Overhead ratio (OPEX) (%)"},
+  lblGrowthCons:{fr:"Croissance annuelle — Conservateur (%)", en:"Annual growth — Conservative (%)"},
+  lblGrowthReal:{fr:"Croissance annuelle — Réaliste (%)", en:"Annual growth — Realistic (%)"},
+  lblGrowthAmb:{fr:"Croissance annuelle — Ambitieux (%)", en:"Annual growth — Ambitious (%)"},
+  btnCalc:{fr:"Calculer le Business Case", en:"Compute Business Case"},
+  btnJson:{fr:"Exporter le JSON", en:"Export JSON"},
+  btnLoad:{fr:"Charger un cas (JSON)", en:"Load a case (JSON)"},
+  btnPrint:{fr:"Imprimer la synthèse", en:"Print the summary"},
+  scnActiveLabel:{fr:"Scénario actif :", en:"Active scenario:"},
+  scn_conservative:{fr:"Conservateur", en:"Conservative"}, scn_realistic:{fr:"Réaliste", en:"Realistic"}, scn_ambitious:{fr:"Ambitieux", en:"Ambitious"},
+  tabSummary:{fr:"Résumé exécutif", en:"Executive summary"}, tabHyp:{fr:"Hypothèses", en:"Assumptions"},
+  tabCalc:{fr:"Calculs détaillés", en:"Detailed calculations"}, tabBc:{fr:"Business Case", en:"Business Case"},
+  tabRoi:{fr:"ROI", en:"ROI"}, tabScn:{fr:"Scénarios", en:"Scenarios"}, tabReco:{fr:"Recommandations", en:"Recommendations"},
+  tabFin:{fr:"Tableau financier", en:"Financial table"}, tabJson:{fr:"JSON", en:"JSON"},
+  hypH2:{fr:"Récapitulatif des hypothèses saisies", en:"Summary of entered assumptions"},
+  calcH2:{fr:"Calculs détaillés — scénario actif", en:"Detailed calculations — active scenario"},
+  calcCapacity:{fr:"Capacité consultants", en:"Consultant capacity"}, calcCagr:{fr:"Croissance du revenu (CAGR)", en:"Revenue growth (CAGR)"},
+  bcH2:{fr:"Business Case", en:"Business Case"}, bcWaterfall:{fr:"Waterfall du revenu", en:"Revenue waterfall"},
+  bcMix:{fr:"Revenue Mix (toutes lignes)", en:"Revenue mix (all lines)"}, bcServices:{fr:"Services Breakdown", en:"Services breakdown"},
+  bcSensH4:{fr:"Sensibilité au ratio Services : Licence", en:"Sensitivity to the Services : License ratio"},
+  bcSensNote:{fr:"C'est l'hypothèse la plus déterminante du modèle : elle fixe directement le poids relatif des licences dans le chiffre d'affaires total généré.", en:"This is the most decisive assumption of the model: it directly sets the relative weight of licenses in the total generated revenue."},
+  roiH2:{fr:"Retour sur investissement", en:"Return on investment"},
+  roiTimeline:{fr:"ROI Timeline (profit cumulé vs investissement)", en:"ROI timeline (cumulative profit vs investment)"},
+  roiCashflow:{fr:"Cash Flow annuel", en:"Annual cash flow"},
+  scnH2:{fr:"Comparaison des scénarios", en:"Scenario comparison"},
+  recoH2:{fr:"Analyse et recommandations", en:"Analysis and recommendations"},
+  recoCourt:{fr:"Court terme", en:"Short term"}, recoMoyen:{fr:"Moyen terme", en:"Medium term"}, recoLong:{fr:"Long terme", en:"Long term"},
+  finH2:{fr:"Tableau financier consolidé (5 ans, scénario actif)", en:"Consolidated financial table (5 years, active scenario)"},
+  jsonH2:{fr:"Export JSON structuré", en:"Structured JSON export"},
+  jsonP:{fr:'Ce JSON contient l\'ensemble des hypothèses et des résultats calculés (3 scénarios). Il peut être ré-importé via "Charger un cas (JSON)" ou consommé par une autre application.', en:'This JSON contains all assumptions and computed results (3 scenarios). It can be re-imported via "Load a case (JSON)" or consumed by another application.'},
+  projVal:{fr:(v)=>"Valeur moyenne du projet (calculée) : "+v, en:(v)=>"Average project value (computed): "+v},
+  weightTotal:{fr:(x)=>"Total des poids bruts : "+x+"% (normalisé automatiquement au calcul)", en:(x)=>"Raw weights total: "+x+"% (auto-normalized at compute time)"},
+  cLicense:{fr:"Licences", en:"Licenses"}, cSupport:{fr:"Support", en:"Support"}, cPS:{fr:"Prof. Services", en:"Prof. Services"},
+  cManaged:{fr:"Managed", en:"Managed"}, cAdvisory:{fr:"Advisory", en:"Advisory"}, cTraining:{fr:"Formation", en:"Training"},
+  uMonths:{fr:"mois", en:"months"}, uYears:{fr:"ans", en:"years"}, none:{fr:"aucun", en:"none"},
+  yearN:{fr:(n)=>"Année "+n, en:(n)=>"Year "+n},
+  alertInvalidJson:{fr:"Fichier JSON invalide ou incompatible avec ce simulateur.", en:"Invalid JSON file or incompatible with this simulator."},
+  alertUnreadable:{fr:"Impossible de lire ce fichier JSON.", en:"Could not read this JSON file."},
+};
+
+function applyStaticI18n(){
+  document.documentElement.setAttribute('lang', lang);
+  document.title = t('docTitle');
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.dataset.i18n); });
+  document.getElementById('genDate').textContent = t('genPrefix') + new Date().toLocaleDateString(locale());
+  document.querySelectorAll('#langsw button').forEach(b=>{
+    const on = b.dataset.l===lang;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on?'true':'false');
+  });
+  updateProjectValueOut();
+  updateWeightTotal();
+}
+function setLang(l){
+  lang = l;
+  try{ localStorage.setItem('gpbc_lang', l); }catch(e){}
+  applyStaticI18n();
+  if(lastResult) renderAll(); else renderAll();
+}
+
+/* ============================== FORMAT ============================== */
+function fmtEUR(v){
+  if (v===null || v===undefined || isNaN(v)) return '—';
+  return new Intl.NumberFormat(locale(),{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(v);
+}
+function fmtPct(v){ if (v===null||v===undefined||isNaN(v)) return '—'; return v.toFixed(1)+(lang==='en'?'%':' %'); }
+function fmtNum(v,d=0){ if (v===null||v===undefined||isNaN(v)) return '—'; return v.toLocaleString(locale(),{maximumFractionDigits:d}); }
+function setVal(id, value){ if (value===undefined||value===null||value==='') return; const el=document.getElementById(id); if (el) el.value = value; }
+
+/* ============================== SCENARIOS / STATE ============================== */
+const SCENARIOS_META = {
+  conservative: { key:'conservative', conversionMult:0.7, projectsMult:0.85, marginAdj:-3 },
+  realistic:    { key:'realistic',    conversionMult:1.0, projectsMult:1.0,  marginAdj:0 },
+  ambitious:    { key:'ambitious',    conversionMult:1.3, projectsMult:1.15, marginAdj:3 },
+};
+function scnLabel(key){ return t('scn_'+key); }
+
+let activeScenario = 'realistic';
+let charts = {};
+let lastResult = null;
+
+document.getElementById('obsMaturity').addEventListener('input', e=>{ document.getElementById('obsMaturityOut').textContent = e.target.value; });
+document.getElementById('servicesToLicenseRatio').addEventListener('input', e=>{ document.getElementById('stlOut').textContent = e.target.value; });
+
+function updateProjectValueOut(){
+  const rate = parseFloat(document.getElementById('avgDailyRate').value)||0;
+  const days = parseFloat(document.getElementById('serviceDaysPerProject').value)||0;
+  document.getElementById('projectValueOut').textContent = t('projVal', fmtEUR(rate*days));
+}
+document.getElementById('avgDailyRate').addEventListener('input', updateProjectValueOut);
+document.getElementById('serviceDaysPerProject').addEventListener('input', updateProjectValueOut);
+
+function updateWeightTotal(){
+  const ps=parseFloat(document.getElementById('psWeight').value)||0, mg=parseFloat(document.getElementById('managedWeight').value)||0,
+        ad=parseFloat(document.getElementById('advisoryWeight').value)||0, tr=parseFloat(document.getElementById('trainingWeight').value)||0;
+  const total = ps+mg+ad+tr;
+  const el = document.getElementById('weightTotalOut');
+  el.textContent = t('weightTotal', total.toFixed(0));
+  el.classList.toggle('warn', Math.abs(total-100)>1);
+}
+['psWeight','managedWeight','advisoryWeight','trainingWeight'].forEach(id=> document.getElementById(id).addEventListener('input', updateWeightTotal));
+
+function suggestInvestment(){
+  const c = parseFloat(document.getElementById('nbConsultants').value)||0;
+  const a = parseFloat(document.getElementById('nbArchitects').value)||0;
+  const s = parseFloat(document.getElementById('nbSales').value)||0;
+  const val = Math.round((c+a)*3000 + s*1500 + 15000);
+  document.getElementById('investment').value = val;
+  renderAll();
+}
+document.getElementById('suggestInvestmentBtn').addEventListener('click', suggestInvestment);
+
+function readInputs(){
+  const num = id => parseFloat(document.getElementById(id).value) || 0;
+  const selectedServices = Array.from(document.querySelectorAll('.svc:checked')).map(el=>({id:el.dataset.id, bucket:el.dataset.bucket}));
+  const avgDailyRate = num('avgDailyRate');
+  const serviceDaysPerProject = num('serviceDaysPerProject');
+  return {
+    partnerType: document.getElementById('partnerType').value,
+    country: document.getElementById('country').value,
+    companySize: num('companySize'),
+    nbConsultants: num('nbConsultants'), nbArchitects: num('nbArchitects'), nbEngineers: num('nbEngineers'), nbSales: num('nbSales'),
+    nbActiveClients: num('nbActiveClients'), sectors: document.getElementById('sectors').value, obsMaturity: num('obsMaturity'),
+    shareServices: num('shareServices'), shareSoftware: num('shareSoftware'), shareManaged: num('shareManaged'),
+    targetedClients: num('targetedClients'), conversionRate: num('conversionRate'), avgProjectsPerClient: num('avgProjectsPerClient'),
+    avgDailyRate, serviceDaysPerProject, projectValue: avgDailyRate*serviceDaysPerProject,
+    marginRate: num('marginRate'), recurringServicesPct: num('recurringServicesPct'), avgContractDurationMonths: num('avgContractDurationMonths'),
+    servicesToLicenseRatio: Math.max(0.1, num('servicesToLicenseRatio')),
+    bucketWeights: { ps:num('psWeight'), managed:num('managedWeight'), advisory:num('advisoryWeight'), training:num('trainingWeight') },
+    supportAsPctOfLicense: num('supportAsPctOfLicense'), workingDaysPerYear: Math.max(1, num('workingDaysPerYear')),
+    licenseMarginPct: num('licenseMarginPct'), investment: num('investment'), opexRatio: num('opexRatio'),
+    growth: { conservative: num('growthConservative'), realistic: num('growthRealistic'), ambitious: num('growthAmbitious') },
+    selectedServices,
+  };
+}
+
+function computeBucketWeights(selectedServices, bucketWeightsPct){
+  const base = { ps:(bucketWeightsPct.ps||0)/100, managed:(bucketWeightsPct.managed||0)/100, advisory:(bucketWeightsPct.advisory||0)/100, training:(bucketWeightsPct.training||0)/100 };
+  const active = { ps:false, managed:false, advisory:false, training:false };
+  selectedServices.forEach(s=>{ if (active[s.bucket]!==undefined) active[s.bucket]=true; });
+  const weights = {...base};
+  Object.keys(weights).forEach(k=>{ if (!active[k]) weights[k]=0; });
+  const sum = Object.values(weights).reduce((a,b)=>a+b,0);
+  if (sum===0){ weights.ps = 1; }
+  else { Object.keys(weights).forEach(k=> weights[k] = weights[k]/sum); }
+  return weights;
+}
+
+/* ============================== MODEL ============================== */
+function computeModel(inputs, scenarioKey){
+  const scn = SCENARIOS_META[scenarioKey];
+  const growth = (inputs.growth[scenarioKey] || 0) / 100;
+
+  const convertedClients = Math.max(0, inputs.targetedClients * (inputs.conversionRate/100) * scn.conversionMult);
+  const projectsPerClient = inputs.avgProjectsPerClient * scn.projectsMult;
+  const totalProjects = convertedClients * projectsPerClient;
+  const totalServiceDays = totalProjects * inputs.serviceDaysPerProject;
+  const grossServicesRevenue = totalProjects * inputs.projectValue;
+
+  const weights = computeBucketWeights(inputs.selectedServices, inputs.bucketWeights);
+  const revPS = grossServicesRevenue * weights.ps;
+  const revManaged = grossServicesRevenue * weights.managed;
+  const revAdvisory = grossServicesRevenue * weights.advisory;
+  const revTraining = grossServicesRevenue * weights.training;
+
+  const revLicense = grossServicesRevenue / inputs.servicesToLicenseRatio;
+  const hasSupportPremium = inputs.selectedServices.some(s=>s.id==='supportpremium');
+  const revSupport = revLicense * (inputs.supportAsPctOfLicense/100) * (hasSupportPremium ? 1 : 0.4);
+
+  const totalRevenue = revLicense + revSupport + grossServicesRevenue;
+
+  const marginRate = Math.max(0, Math.min(100, inputs.marginRate + scn.marginAdj)) / 100;
+  const licenseMargin = Math.max(0, Math.min(100, inputs.licenseMarginPct)) / 100;
+  const grossMarginEUR = grossServicesRevenue*marginRate + (revLicense+revSupport)*licenseMargin;
+  const grossMarginPct = totalRevenue>0 ? (grossMarginEUR/totalRevenue)*100 : 0;
+
+  const recurringRevenue = revManaged + revSupport + revAdvisory*(inputs.recurringServicesPct/100);
+  const nonRecurringRevenue = totalRevenue - recurringRevenue;
+
+  const requiredConsultants = totalServiceDays / inputs.workingDaysPerYear;
+  const availableConsultants = inputs.nbConsultants + inputs.nbArchitects + inputs.nbEngineers;
+  const utilization = availableConsultants>0 ? (requiredConsultants/availableConsultants)*100 : 0;
+
+  const investment = inputs.investment;
+  const roi = investment>0 ? ((grossMarginEUR - investment)/investment)*100 : null;
+  const paybackMonths = grossMarginEUR>0 ? (investment/(grossMarginEUR/12)) : null;
+
+  const years = [1,2,3,4,5].map(y=>{
+    const revenue = totalRevenue*Math.pow(1+growth, y-1);
+    const profit = revenue*(grossMarginPct/100);
+    return {year:y, revenue, profit};
+  });
+  const cum = n => years.slice(0,n).reduce((acc,y)=>({revenue:acc.revenue+y.revenue, profit:acc.profit+y.profit}),{revenue:0,profit:0});
+  const value1y = cum(1), value3y = cum(3), value5y = cum(5);
+  const cagr = years[0].revenue>0 ? (Math.pow(years[4].revenue/years[0].revenue, 1/4)-1)*100 : 0;
+
+  const ratioServicesLicense = revLicense>0 ? grossServicesRevenue/revLicense : null;
+  const ratioServicesLicenseInclSupport = revLicense>0 ? (grossServicesRevenue+revSupport)/revLicense : null;
+
+  const revenuePerClient = convertedClients>0 ? totalRevenue/convertedClients : 0;
+  const recurringPerClient = convertedClients>0 ? recurringRevenue/convertedClients : 0;
+  const nonRecurringPerClient = revenuePerClient - recurringPerClient;
+  const contractYears = inputs.avgContractDurationMonths/12;
+  const clv = nonRecurringPerClient + recurringPerClient*contractYears;
+
+  const ebitdaAdd = grossMarginEUR*(1-inputs.opexRatio/100);
+
+  const tamClients = inputs.targetedClients;
+  const tamValuePotential = inputs.targetedClients * inputs.avgProjectsPerClient * inputs.projectValue;
+  const ratioTotalToServices = grossServicesRevenue>0 ? totalRevenue/grossServicesRevenue : 1;
+  const tamTotalValue = tamValuePotential * ratioTotalToServices;
+
+  return {
+    scenarioKey, scenarioLabel: scnLabel(scenarioKey), growthPct: growth*100,
+    convertedClients, totalProjects, totalServiceDays, grossServicesRevenue,
+    revPS, revManaged, revAdvisory, revTraining, revLicense, revSupport, totalRevenue,
+    grossMarginEUR, grossMarginPct, recurringRevenue, nonRecurringRevenue,
+    requiredConsultants, availableConsultants, utilization,
+    investment, roi, paybackMonths, years, value1y, value3y, value5y, cagr,
+    ratioServicesLicense, ratioServicesLicenseInclSupport,
+    revenuePerClient, clv, ebitdaAdd, weights,
+    tamClients, tamValuePotential, tamTotalValue,
+  };
+}
+function computeAll(inputs){
+  return {
+    conservative: computeModel(inputs,'conservative'),
+    realistic: computeModel(inputs,'realistic'),
+    ambitious: computeModel(inputs,'ambitious'),
+  };
+}
+
+/* ============================== CHART HELPERS ============================== */
+function upsertChart(id, config){
+  if (charts[id]) charts[id].destroy();
+  const ctx = document.getElementById(id).getContext('2d');
+  charts[id] = new Chart(ctx, config);
+}
+const COLORS = { orange:'#FF671D', blue:'#2970FF', green:'#04BC4C', yellow:'#FFED23', purple:'#D444F1', red:'#E24B4A', gray:'#5F5E5A' };
+Chart.defaults.color = '#AFAFAF';
+Chart.defaults.borderColor = '#3A3A3A';
+Chart.defaults.font.family = "Inter, sans-serif";
+if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) Chart.defaults.animation = false;
+
+/* ============================== RENDER ============================== */
+function renderAll(){
+  const inputs = readInputs();
+  const all = computeAll(inputs);
+  lastResult = { inputs, all };
+  renderSummary(inputs, all[activeScenario]);
+  renderHyp(inputs);
+  renderCalc(inputs, all[activeScenario]);
+  renderBusinessCase(inputs, all[activeScenario]);
+  renderRoi(all[activeScenario]);
+  renderScenarios(all);
+  renderReco(inputs, all[activeScenario]);
+  renderFin(all[activeScenario]);
+  const payload = renderJson(inputs, all);
+  try{ localStorage.setItem('gpbc_state', JSON.stringify(payload)); }catch(e){}
+}
+
+function renderSummary(inputs, m){
+  const EN = lang==='en';
+  const cards = [
+    {lbl:tx({fr:'CA total généré (an 1)',en:'Total revenue generated (Y1)'}), val:fmtEUR(m.totalRevenue), cls:'orange'},
+    {lbl:tx({fr:'Marge brute (an 1)',en:'Gross margin (Y1)'}), val:fmtEUR(m.grossMarginEUR)+' · '+fmtPct(m.grossMarginPct), cls:'green'},
+    {lbl:tx({fr:'Ratio Services / Licences',en:'Services / License ratio'}), val:(m.ratioServicesLicense? m.ratioServicesLicense.toFixed(1):'—')+' : 1', cls:'blue'},
+    {lbl:tx({fr:'ROI an 1',en:'ROI Y1'}), val: m.roi!==null? fmtPct(m.roi):'—', cls:'orange'},
+    {lbl:tx({fr:'Opportunité cumulée 5 ans',en:'Cumulative 5-year opportunity'}), val:fmtEUR(m.value5y.revenue), cls:'green'},
+    {lbl:tx({fr:'CLV moyenne par client',en:'Average CLV per client'}), val:fmtEUR(m.clv), cls:'blue'},
+  ];
+  document.getElementById('summaryCards').innerHTML = cards.map(c=>`<div class="card"><div class="lbl">${c.lbl}</div><div class="val ${c.cls}">${c.val}</div></div>`).join('');
+
+  const pctLicense = m.totalRevenue>0 ? (m.revLicense/m.totalRevenue*100) : 0;
+  const pctServices = m.totalRevenue>0 ? (m.grossServicesRevenue/m.totalRevenue*100) : 0;
+  const pctRecurring = m.totalRevenue>0 ? (m.recurringRevenue/m.totalRevenue*100) : 0;
+  const ratioTxt = m.ratioServicesLicense? m.ratioServicesLicense.toFixed(1):'—';
+  const contractYears = (inputs.avgContractDurationMonths/12).toFixed(1);
+
+  document.getElementById('execSummaryText').innerHTML = EN ? `
+    <p>This Business Case assesses the economic opportunity of a deeper partnership with Grafana Labs for a <strong>${inputs.partnerType}</strong> based in <strong>${inputs.country||'—'}</strong>. Based on <strong>${fmtNum(inputs.targetedClients)}</strong> targeted Grafana clients and a conversion rate of <strong>${fmtPct(inputs.conversionRate)}</strong>, the <strong>${m.scenarioLabel}</strong> scenario projects <strong>${fmtEUR(m.totalRevenue)}</strong> of generated revenue in year 1, for a gross margin of <strong>${fmtEUR(m.grossMarginEUR)}</strong> (${fmtPct(m.grossMarginPct)}).</p>
+    <p>License revenue accounts for only <strong>${fmtEUR(m.revLicense)}</strong> (${pctLicense.toFixed(0)}% of total), versus <strong>${fmtEUR(m.grossServicesRevenue)}</strong> of services revenue (${pctServices.toFixed(0)}%) — a Services / License ratio of <strong>${ratioTxt} : 1</strong>. Grafana acts here as an accelerator of services revenue, margin and customer retention — the license is only an entry point.</p>
+    <p>Year 1 ROI stands at <strong>${m.roi!==null? fmtPct(m.roi):'n/a'}</strong>, with an estimated payback of <strong>${m.paybackMonths!==null? Math.max(0,m.paybackMonths).toFixed(1)+' '+t('uMonths'):'n/a'}</strong>. Over 5 years, the cumulative opportunity reaches <strong>${fmtEUR(m.value5y.revenue)}</strong> in revenue and <strong>${fmtEUR(m.value5y.profit)}</strong> in cumulative gross profit.</p>
+    <p><strong>Key lever</strong>: recurring services (Managed Services, Support, Advisory) already represent <strong>${pctRecurring.toFixed(0)}%</strong> of generated revenue and secure retention over <strong>${contractYears} ${t('uYears')}</strong> on average (average CLV: ${fmtEUR(m.clv)} per client).</p>
+  ` : `
+    <p>Ce Business Case évalue l'opportunité économique d'un partenariat approfondi avec Grafana Labs pour un(e) <strong>${inputs.partnerType}</strong> basé(e) en <strong>${inputs.country||'—'}</strong>. Sur la base de <strong>${fmtNum(inputs.targetedClients)}</strong> clients Grafana ciblés et d'un taux de conversion de <strong>${fmtPct(inputs.conversionRate)}</strong>, le scénario <strong>${m.scenarioLabel}</strong> projette un chiffre d'affaires généré de <strong>${fmtEUR(m.totalRevenue)}</strong> en année 1, pour une marge brute de <strong>${fmtEUR(m.grossMarginEUR)}</strong> (${fmtPct(m.grossMarginPct)}).</p>
+    <p>Les revenus de licences ne représentent que <strong>${fmtEUR(m.revLicense)}</strong> (${pctLicense.toFixed(0)}% du total), contre <strong>${fmtEUR(m.grossServicesRevenue)}</strong> de revenus de services (${pctServices.toFixed(0)}%) — un ratio Services / Licences de <strong>${ratioTxt} : 1</strong>. Grafana agit ici comme un accélérateur de revenus de services, de marge et de fidélisation client — la licence n'est qu'un point d'entrée.</p>
+    <p>Le ROI année 1 s'établit à <strong>${m.roi!==null? fmtPct(m.roi):'n/a'}</strong>, avec un retour sur investissement estimé à <strong>${m.paybackMonths!==null? Math.max(0,m.paybackMonths).toFixed(1)+' '+t('uMonths'):'n/a'}</strong>. Sur 5 ans, l'opportunité cumulée atteint <strong>${fmtEUR(m.value5y.revenue)}</strong> de chiffre d'affaires et <strong>${fmtEUR(m.value5y.profit)}</strong> de profit brut cumulé.</p>
+    <p><strong>Levier principal</strong> : les services récurrents (Managed Services, Support, Advisory) représentent déjà <strong>${pctRecurring.toFixed(0)}%</strong> du chiffre d'affaires généré et sécurisent la fidélisation sur <strong>${contractYears} ${t('uYears')}</strong> en moyenne (CLV moyenne : ${fmtEUR(m.clv)} par client).</p>
+  `;
+
+  const printTitle = EN ? `Executive summary — ${inputs.partnerType} (${inputs.country||''})` : `Synthèse exécutive — ${inputs.partnerType} (${inputs.country||''})`;
+  const printSub = EN ? `${m.scenarioLabel} scenario — generated on ${new Date().toLocaleDateString(locale())}` : `Scénario ${m.scenarioLabel} — généré le ${new Date().toLocaleDateString(locale())}`;
+  document.getElementById('printHeader').innerHTML = `<h1>${printTitle}</h1><p style="color:#555;">${printSub}</p>`;
+
+  upsertChart('chartRevenueMixSummary', {
+    type:'doughnut',
+    data:{ labels:[t('cLicense'), tx({fr:'Services (PS + Managed + Advisory + Formation + Support)',en:'Services (PS + Managed + Advisory + Training + Support)'})],
+      datasets:[{ data:[m.revLicense, m.totalRevenue-m.revLicense], backgroundColor:[COLORS.gray, COLORS.orange] }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ color:'#AFAFAF' } } } }
+  });
+}
+
+function renderHyp(inputs){
+  const EN = lang==='en';
+  const rows = [
+    [tx({fr:'Type de partenaire',en:'Partner type'}), inputs.partnerType], [t('lblCountry'), inputs.country], [t('lblSize'), fmtNum(inputs.companySize)],
+    [t('lblConsultants'), fmtNum(inputs.nbConsultants)], [t('lblArchitects'), fmtNum(inputs.nbArchitects)], [t('lblEngineers'), fmtNum(inputs.nbEngineers)],
+    [t('lblSales'), fmtNum(inputs.nbSales)], [t('lblActiveClients'), fmtNum(inputs.nbActiveClients)], [t('lblSectors'), inputs.sectors],
+    [t('lblObsMaturity').replace(' (1-5)','').replace(' (1-5)',''), inputs.obsMaturity+' / 5'],
+    [tx({fr:'% CA Services / Logiciel / Managed (actuel)',en:'% revenue Services / Software / Managed (current)'}), `${inputs.shareServices}% / ${inputs.shareSoftware}% / ${inputs.shareManaged}%`],
+    [t('lblTargeted'), fmtNum(inputs.targetedClients)], [t('lblConversion').replace(' (%)',''), fmtPct(inputs.conversionRate)],
+    [t('lblProjPerClient'), inputs.avgProjectsPerClient],
+    [tx({fr:'TJM moyen',en:'Avg. daily rate'}), fmtEUR(inputs.avgDailyRate)], [t('lblDaysPerProject'), fmtNum(inputs.serviceDaysPerProject)],
+    [tx({fr:'Valeur moyenne du projet (calculée : TJM × jours)',en:'Average project value (computed: rate × days)'}), fmtEUR(inputs.projectValue)],
+    [tx({fr:'Taux de marge',en:'Margin rate'}), fmtPct(inputs.marginRate)], [tx({fr:'% services récurrents',en:'% recurring services'}), fmtPct(inputs.recurringServicesPct)],
+    [tx({fr:'Durée moy. des contrats',en:'Avg. contract duration'}), inputs.avgContractDurationMonths+' '+t('uMonths')],
+    [tx({fr:'Ratio Services : Licence (hypothèse clé)',en:'Services : License ratio (key assumption)'}), inputs.servicesToLicenseRatio+' : 1'],
+    [tx({fr:'Poids bruts PS / Managed / Advisory / Formation',en:'Raw weights PS / Managed / Advisory / Training'}), `${inputs.bucketWeights.ps}% / ${inputs.bucketWeights.managed}% / ${inputs.bucketWeights.advisory}% / ${inputs.bucketWeights.training}%`],
+    [tx({fr:'Services sélectionnés',en:'Selected services'}), inputs.selectedServices.map(s=>s.id).join(', ') || t('none')],
+    [t('lblSupportPct'), fmtPct(inputs.supportAsPctOfLicense)],
+    [t('lblWorkingDays'), fmtNum(inputs.workingDaysPerYear)],
+    [tx({fr:'Marge licence / support',en:'License / support margin'}), fmtPct(inputs.licenseMarginPct)],
+    [tx({fr:'Investissement partenaire',en:'Partner investment'}), fmtEUR(inputs.investment)], [tx({fr:'Ratio charges (OPEX)',en:'Overhead ratio (OPEX)'}), fmtPct(inputs.opexRatio)],
+  ];
+  const sumShares = inputs.shareServices+inputs.shareSoftware+inputs.shareManaged;
+  const warn = Math.abs(sumShares-100)>1 ? `<p class="warn">${EN?`Warning: the current revenue shares (${sumShares}%) do not add up to 100%.`:`Attention : la somme des parts de CA actuelles (${sumShares}%) ne totalise pas 100%.`}</p>` : '';
+  document.getElementById('tab-hyp').querySelectorAll('p.warn').forEach(e=>e.remove());
+  document.getElementById('hypTable').innerHTML = `<tr><th>${EN?'Assumption':'Hypothèse'}</th><th>${EN?'Value':'Valeur'}</th></tr>` + rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+  if (warn) document.getElementById('hypTable').insertAdjacentHTML('beforebegin', warn);
+}
+
+function renderCalc(inputs, m){
+  const EN = lang==='en';
+  const rows = [
+    [tx({fr:'1. Marché adressable (clients ciblés)',en:'1. Addressable market (targeted clients)'}), fmtNum(m.tamClients)],
+    [tx({fr:'1b. Valeur potentielle brute à 100% conversion',en:'1b. Gross potential value at 100% conversion'}), fmtEUR(m.tamValuePotential)],
+    [tx({fr:'1c. Valeur totale adressable (licence + services)',en:'1c. Total addressable value (license + services)'}), fmtEUR(m.tamTotalValue)],
+    [tx({fr:'Clients convertis',en:'Converted clients'}), fmtNum(m.convertedClients,1)],
+    [tx({fr:'Nombre total de projets',en:'Total number of projects'}), fmtNum(m.totalProjects,1)],
+    [tx({fr:'Total jours de service requis',en:'Total service days required'}), fmtNum(m.totalServiceDays,0)],
+    [tx({fr:'2. Revenus licences estimés',en:'2. Estimated license revenue'}), fmtEUR(m.revLicense)],
+    [tx({fr:'3. Revenus Professional Services',en:'3. Professional Services revenue'}), fmtEUR(m.revPS)],
+    [tx({fr:'4. Revenus Managed Services',en:'4. Managed Services revenue'}), fmtEUR(m.revManaged)],
+    [tx({fr:'5. Revenus Support',en:'5. Support revenue'}), fmtEUR(m.revSupport)],
+    [tx({fr:'6. Revenus Formation',en:'6. Training revenue'}), fmtEUR(m.revTraining)],
+    [tx({fr:'7. Revenus Advisory',en:'7. Advisory revenue'}), fmtEUR(m.revAdvisory)],
+    [tx({fr:'Revenu total généré',en:'Total generated revenue'}), fmtEUR(m.totalRevenue)],
+    [tx({fr:'8. Revenus récurrents',en:'8. Recurring revenue'}), fmtEUR(m.recurringRevenue)+' ('+fmtPct(m.totalRevenue>0?m.recurringRevenue/m.totalRevenue*100:0)+')'],
+    [tx({fr:'9. Marge brute (%)',en:'9. Gross margin (%)'}), fmtPct(m.grossMarginPct)],
+    [tx({fr:'10. Profit brut (€)',en:'10. Gross profit (€)'}), fmtEUR(m.grossMarginEUR)],
+    [tx({fr:'11. ROI (an 1)',en:'11. ROI (Y1)'}), m.roi!==null?fmtPct(m.roi):'—'],
+    [tx({fr:'12. Temps de retour sur investissement',en:'12. Payback period'}), m.paybackMonths!==null? m.paybackMonths.toFixed(1)+' '+t('uMonths'):'—'],
+    [tx({fr:'13. Valeur à 1 an',en:'13. Value at 1 year'}), fmtEUR(m.value1y.revenue)],
+    [tx({fr:'13. Valeur à 3 ans (cumulé)',en:'13. Value at 3 years (cumulative)'}), fmtEUR(m.value3y.revenue)],
+    [tx({fr:'13. Valeur à 5 ans (cumulé)',en:'13. Value at 5 years (cumulative)'}), fmtEUR(m.value5y.revenue)],
+    [tx({fr:'14. Ratio Services / Licences',en:'14. Services / License ratio'}), (m.ratioServicesLicense? m.ratioServicesLicense.toFixed(2):'—')+' : 1'],
+    [tx({fr:'15. Customer Lifetime Value (CLV)',en:'15. Customer Lifetime Value (CLV)'}), fmtEUR(m.clv)],
+    [tx({fr:'16. Valeur moyenne par client (an 1)',en:'16. Average value per client (Y1)'}), fmtEUR(m.revenuePerClient)],
+    [tx({fr:'17. Consultants nécessaires',en:'17. Consultants required'}), fmtNum(m.requiredConsultants,1)+' ('+(EN?'available: ':'disponibles : ')+fmtNum(m.availableConsultants)+')'],
+    [tx({fr:'18. Utilisation des équipes',en:'18. Team utilization'}), fmtPct(m.utilization)],
+    [tx({fr:'19. EBITDA additionnel estimé',en:'19. Estimated additional EBITDA'}), fmtEUR(m.ebitdaAdd)],
+    [tx({fr:'20. Opportunité totale générée (5 ans)',en:'20. Total generated opportunity (5 years)'}), fmtEUR(m.value5y.revenue)],
+    [tx({fr:'CAGR revenu (an 1 → an 5)',en:'Revenue CAGR (Y1 → Y5)'}), fmtPct(m.cagr)],
+  ];
+  document.getElementById('calcTable').innerHTML = `<tr><th>${EN?'Indicator':'Indicateur'}</th><th class="num">${(EN?'Value — ':'Valeur — ')+(EN?'scenario ':'scénario ')+m.scenarioLabel}</th></tr>` +
+    rows.map(r=>`<tr><td>${r[0]}</td><td class="num">${r[1]}</td></tr>`).join('');
+
+  upsertChart('chartCapacity', {
+    type:'bar',
+    data:{ labels:[tx({fr:'Consultants nécessaires',en:'Consultants required'}), tx({fr:'Consultants disponibles',en:'Consultants available'})],
+      datasets:[{ label:tx({fr:'Consultants (ETP)',en:'Consultants (FTE)'}), data:[Math.round(m.requiredConsultants*10)/10, m.availableConsultants], backgroundColor:[COLORS.orange, COLORS.blue] }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, grid:{color:'#3A3A3A'} }, x:{ grid:{display:false} } } }
+  });
+
+  upsertChart('chartCagr', {
+    type:'bar',
+    data:{ labels: m.years.map(y=>t('yearN', y.year)),
+      datasets:[{ label:tx({fr:'Revenu (€)',en:'Revenue (€)'}), data:m.years.map(y=>Math.round(y.revenue)), backgroundColor:COLORS.purple }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false },
+      title:{ display:true, text:(EN?'Estimated CAGR: ':'CAGR estimé : ')+fmtPct(m.cagr), color:'#AFAFAF', font:{size:12} } },
+      scales:{ y:{ beginAtZero:true, grid:{color:'#3A3A3A'}, ticks:{ callback:v=>fmtEUR(v) } }, x:{ grid:{display:false} } } }
+  });
+}
+
+function renderBusinessCase(inputs, m){
+  const EN = lang==='en';
+  const ratioTxt = m.ratioServicesLicense? m.ratioServicesLicense.toFixed(1):'—';
+  const ratioInclTxt = m.ratioServicesLicenseInclSupport? m.ratioServicesLicenseInclSupport.toFixed(1):'—';
+  document.getElementById('bcNarrative').innerHTML = EN ? `
+    <p>The economics of the partnership rest on a simple principle: each euro of Grafana license drives, under the entered assumptions, <strong>€${ratioTxt}</strong> of associated services revenue (implementation, managed services, advisory, training). Including support, this ratio reaches <strong>${ratioInclTxt} : 1</strong>.</p>
+    <p>Of the total generated revenue (${fmtEUR(m.totalRevenue)}), the split is: Professional Services <strong>${fmtEUR(m.revPS)}</strong>, Managed Services <strong>${fmtEUR(m.revManaged)}</strong>, Advisory <strong>${fmtEUR(m.revAdvisory)}</strong>, Training <strong>${fmtEUR(m.revTraining)}</strong>, Support <strong>${fmtEUR(m.revSupport)}</strong>, versus only <strong>${fmtEUR(m.revLicense)}</strong> of licenses. Grafana is therefore not an isolated product line: it is the catalyst of a complete, recurring Observability practice.</p>
+  ` : `
+    <p>La logique économique du partenariat repose sur un principe simple : chaque euro de licence Grafana entraîne, selon les hypothèses saisies, <strong>${ratioTxt} €</strong> de revenus de services associés (implémentation, managed services, advisory, formation). En intégrant le support, ce ratio atteint <strong>${ratioInclTxt} : 1</strong>.</p>
+    <p>Sur le CA total généré (${fmtEUR(m.totalRevenue)}), la répartition est la suivante : Professional Services <strong>${fmtEUR(m.revPS)}</strong>, Managed Services <strong>${fmtEUR(m.revManaged)}</strong>, Advisory <strong>${fmtEUR(m.revAdvisory)}</strong>, Formation <strong>${fmtEUR(m.revTraining)}</strong>, Support <strong>${fmtEUR(m.revSupport)}</strong>, contre seulement <strong>${fmtEUR(m.revLicense)}</strong> de licences. Grafana n'est donc pas une ligne produit isolée : c'est le catalyseur d'une practice Observability complète et récurrente.</p>
+  `;
+  const wSteps = [
+    {label:t('cLicense'), value:m.revLicense},
+    {label:'+ '+t('cSupport'), value:m.revSupport},
+    {label:'+ '+t('cPS'), value:m.revPS},
+    {label:'+ '+t('cManaged'), value:m.revManaged},
+    {label:'+ '+t('cAdvisory'), value:m.revAdvisory},
+    {label:'+ '+t('cTraining'), value:m.revTraining},
+  ];
+  let cum=0; const floating = wSteps.map(s=>{ const start=cum; cum+=s.value; return [Math.round(start),Math.round(cum)]; });
+  const labels = wSteps.map(s=>s.label).concat([tx({fr:'Total',en:'Total'})]);
+  floating.push([0, Math.round(cum)]);
+  const bg = wSteps.map(()=>COLORS.blue).concat([COLORS.orange]);
+
+  upsertChart('chartWaterfall', {
+    type:'bar',
+    data:{ labels, datasets:[{ label:'€', data:floating, backgroundColor:bg }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
+      scales:{ y:{ beginAtZero:true, grid:{color:'#3A3A3A'}, ticks:{ callback:v=>fmtEUR(v) } }, x:{ grid:{display:false}, ticks:{ autoSkip:false, maxRotation:30 } } } }
+  });
+
+  upsertChart('chartRevenueMix', {
+    type:'doughnut',
+    data:{ labels:[t('cLicense'),t('cSupport'),t('cPS'),t('cManaged'),t('cAdvisory'),t('cTraining')],
+      datasets:[{ data:[m.revLicense,m.revSupport,m.revPS,m.revManaged,m.revAdvisory,m.revTraining],
+        backgroundColor:[COLORS.gray,COLORS.yellow,COLORS.orange,COLORS.blue,COLORS.purple,COLORS.green] }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ color:'#AFAFAF', boxWidth:10, font:{size:11} } } } }
+  });
+
+  upsertChart('chartServicesBreakdown', {
+    type:'bar',
+    data:{ labels:[t('cPS'),t('cManaged'),t('cAdvisory'),t('cTraining')],
+      datasets:[{ label:'€', data:[m.revPS,m.revManaged,m.revAdvisory,m.revTraining], backgroundColor:[COLORS.orange,COLORS.blue,COLORS.purple,COLORS.green] }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
+      scales:{ x:{ beginAtZero:true, grid:{color:'#3A3A3A'}, ticks:{ callback:v=>fmtEUR(v) } }, y:{ grid:{display:false} } } }
+  });
+
+  renderSensitivity(inputs);
+}
+
+function renderSensitivity(inputs){
+  const ratios = [1,2,3,4,5,6,8,10];
+  const rows = ratios.map(r=>{
+    const testInputs = Object.assign({}, inputs, { servicesToLicenseRatio: r });
+    const mm = computeModel(testInputs, activeScenario);
+    return { ratio:r, total:mm.totalRevenue, license:mm.revLicense };
+  });
+  upsertChart('chartSensitivity', {
+    type:'line',
+    data:{ labels: rows.map(r=>r.ratio+' : 1'),
+      datasets:[
+        { label:tx({fr:'CA total',en:'Total revenue'}), data: rows.map(r=>Math.round(r.total)), borderColor:COLORS.orange, backgroundColor:'rgba(255,103,29,0.12)', tension:0.25, fill:true },
+        { label:tx({fr:'Revenu licences',en:'License revenue'}), data: rows.map(r=>Math.round(r.license)), borderColor:COLORS.blue, backgroundColor:'rgba(41,112,255,0.12)', tension:0.25, fill:true },
+      ] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ color:'#AFAFAF' } } },
+      scales:{ y:{ grid:{color:'#3A3A3A'}, ticks:{ callback:v=>fmtEUR(v) } }, x:{ grid:{display:false} } } }
+  });
+}
+
+function renderRoi(m){
+  const EN = lang==='en';
+  const cards = [
+    {lbl:tx({fr:'Investissement',en:'Investment'}), val:fmtEUR(m.investment)},
+    {lbl:tx({fr:'ROI an 1',en:'ROI Y1'}), val: m.roi!==null? fmtPct(m.roi):'—', cls:'orange'},
+    {lbl:tx({fr:'Payback',en:'Payback'}), val: m.paybackMonths!==null? m.paybackMonths.toFixed(1)+' '+t('uMonths'):'—', cls:'blue'},
+    {lbl:tx({fr:'EBITDA additionnel estimé',en:'Estimated additional EBITDA'}), val:fmtEUR(m.ebitdaAdd), cls:'green'},
+  ];
+  document.getElementById('roiCards').innerHTML = cards.map(c=>`<div class="card"><div class="lbl">${c.lbl}</div><div class="val ${c.cls||''}">${c.val}</div></div>`).join('');
+
+  let cumProfit = -m.investment;
+  const timeline = [{x:0,y:Math.round(cumProfit)}];
+  m.years.forEach(y=>{ cumProfit += y.profit; timeline.push({x:y.year, y:Math.round(cumProfit)}); });
+  const yTag = EN ? 'Y' : 'A';
+
+  upsertChart('chartRoiTimeline', {
+    type:'line',
+    data:{ labels: timeline.map(t=>yTag+t.x),
+      datasets:[
+        { label:tx({fr:'Profit cumulé net',en:'Net cumulative profit'}), data: timeline.map(t=>t.y), borderColor:COLORS.orange, backgroundColor:'rgba(255,103,29,0.15)', fill:true, tension:0.2 },
+        { label:tx({fr:'Seuil de rentabilité',en:'Break-even'}), data: timeline.map(()=>0), borderColor:COLORS.gray, borderDash:[6,4], pointRadius:0 },
+      ] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ color:'#AFAFAF' } } },
+      scales:{ y:{ grid:{color:'#3A3A3A'}, ticks:{ callback:v=>fmtEUR(v) } }, x:{ grid:{display:false} } } }
+  });
+
+  const cashflow = m.years.map((y,i)=> i===0 ? y.profit - m.investment : y.profit);
+  upsertChart('chartCashFlow', {
+    type:'bar',
+    data:{ labels: m.years.map(y=>t('yearN', y.year)),
+      datasets:[{ label:tx({fr:'Cash flow net (€)',en:'Net cash flow (€)'}), data: cashflow.map(v=>Math.round(v)), backgroundColor: cashflow.map(v=> v>=0? COLORS.green: COLORS.red) }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
+      scales:{ y:{ grid:{color:'#3A3A3A'}, ticks:{ callback:v=>fmtEUR(v) } }, x:{ grid:{display:false} } } }
+  });
+}
+
+function renderScenarios(all){
+  const EN = lang==='en';
+  const order = ['conservative','realistic','ambitious'];
+  const rows = order.map(k=>{
+    const m = all[k];
+    return `<tr><td>${m.scenarioLabel}</td><td class="num">${fmtEUR(m.totalRevenue)}</td><td class="num">${fmtPct(m.grossMarginPct)}</td>
+      <td class="num">${m.roi!==null?fmtPct(m.roi):'—'}</td><td class="num">${fmtEUR(m.grossMarginEUR)}</td>
+      <td class="num">${fmtNum(m.totalProjects,1)}</td><td class="num">${fmtEUR(m.value5y.revenue)}</td></tr>`;
+  }).join('');
+  const th = EN
+    ? `<tr><th>Scenario</th><th class="num">Revenue Y1</th><th class="num">Margin %</th><th class="num">ROI Y1</th><th class="num">Gross profit Y1</th><th class="num">Projects generated</th><th class="num">5-year cumulative revenue</th></tr>`
+    : `<tr><th>Scénario</th><th class="num">CA an 1</th><th class="num">Marge %</th><th class="num">ROI an 1</th><th class="num">Profit brut an 1</th><th class="num">Projets générés</th><th class="num">CA cumulé 5 ans</th></tr>`;
+  document.getElementById('scnTable').innerHTML = th + rows;
+
+  upsertChart('chartScenarios', {
+    type:'bar',
+    data:{ labels: order.map(k=>all[k].scenarioLabel),
+      datasets:[
+        { label:tx({fr:'CA an 1',en:'Revenue Y1'}), data: order.map(k=>Math.round(all[k].totalRevenue)), backgroundColor:COLORS.blue },
+        { label:tx({fr:'Profit brut an 1',en:'Gross profit Y1'}), data: order.map(k=>Math.round(all[k].grossMarginEUR)), backgroundColor:COLORS.orange },
+      ] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ color:'#AFAFAF' } } },
+      scales:{ y:{ grid:{color:'#3A3A3A'}, ticks:{ callback:v=>fmtEUR(v) } }, x:{ grid:{display:false} } } }
+  });
+}
+
+function renderReco(inputs, m){
+  const EN = lang==='en';
+  const pctRecurring = m.totalRevenue>0 ? (m.recurringRevenue/m.totalRevenue*100) : 0;
+  document.getElementById('analysisBlock').innerHTML = EN ? `
+    <h3>Biggest growth levers</h3>
+    <p>Growing recurring services (Managed Services, Support, Advisory) — currently ${pctRecurring.toFixed(0)}% of generated revenue — and scaling up the Advisory practice (FinOps, SRE, AI Observability), typically the highest-margin.</p>
+    <h3>Main risks</h3>
+    <p>Delivery capacity: team utilization estimated at ${fmtPct(m.utilization)}. Dependence on a conversion rate of ${fmtPct(inputs.conversionRate)} across ${fmtNum(inputs.targetedClients)} targeted clients. Partner's current observability maturity: ${inputs.obsMaturity}/5.</p>
+    <h3>Critical assumptions</h3>
+    <p>Services/license ratio (${inputs.servicesToLicenseRatio}:1) — the most sensitive assumption of the model, see the Business Case tab — along with the average project value (${fmtEUR(inputs.projectValue)}) and the margin rate (${fmtPct(inputs.marginRate)}) directly drive ROI and additional EBITDA.</p>
+    <h3>Quick wins</h3>
+    <p>Short, billable Assessments and Health Checks on the existing installed base (${fmtNum(inputs.nbActiveClients)} active clients) to generate references before scaling commercially.</p>
+  ` : `
+    <h3>Plus gros leviers de croissance</h3>
+    <p>Développement des services récurrents (Managed Services, Support, Advisory) — actuellement ${pctRecurring.toFixed(0)}% du CA généré — et montée en puissance de la practice Advisory (FinOps, SRE, AI Observability), généralement la plus margée.</p>
+    <h3>Principaux risques</h3>
+    <p>Capacité de delivery : utilisation des équipes estimée à ${fmtPct(m.utilization)}. Dépendance à un taux de conversion de ${fmtPct(inputs.conversionRate)} sur ${fmtNum(inputs.targetedClients)} clients ciblés. Maturité observability actuelle du partenaire : ${inputs.obsMaturity}/5.</p>
+    <h3>Hypothèses critiques</h3>
+    <p>Ratio services/licence (${inputs.servicesToLicenseRatio}:1) — hypothèse la plus sensible du modèle, voir l'onglet Business Case — ainsi que la valeur moyenne de projet (${fmtEUR(inputs.projectValue)}) et le taux de marge (${fmtPct(inputs.marginRate)}) conditionnent directement le ROI et l'EBITDA additionnel.</p>
+    <h3>Quick wins</h3>
+    <p>Assessments et Health Checks facturables à courte durée sur la base installée existante (${fmtNum(inputs.nbActiveClients)} clients actifs) pour générer des références avant la montée en puissance commerciale.</p>
+  `;
+
+  const recs = { court:[], moyen:[], long:[] };
+  const nbCA = fmtNum(inputs.nbConsultants+inputs.nbArchitects);
+  const util = fmtPct(m.utilization);
+  const targeted = fmtNum(inputs.targetedClients);
+  if (EN){
+    if (inputs.obsMaturity<=2) recs.court.push('Prioritize a Grafana certification program for the '+nbCA+' consultants and architects to make delivery reliable before accelerating commercially.');
+    else recs.court.push('Launch 3 to 5 Grafana Assessments at the highest-potential existing accounts to generate fast references.');
+    if (m.utilization>90) recs.court.push('Delivery capacity near saturation ('+util+'): hire or subcontract before signing new targeted clients.');
+    else if (m.utilization<50) recs.court.push('Delivery capacity available ('+util+' utilization): accelerate prospecting without over-booking risk.');
+    recs.court.push('Set up a pipeline dashboard dedicated to the '+targeted+' targeted clients to make the conversion rate reliable.');
+    recs.moyen.push('Package a Managed Grafana / Premium Support offering to grow the recurring revenue share (target: exceed '+fmtPct(Math.max(50, inputs.recurringServicesPct+10))+').');
+    recs.moyen.push('Build a dedicated FinOps / SRE practice to capture the Advisory layer, typically the highest-margin.');
+    recs.moyen.push('Structure a packaged Training offering to accelerate customer autonomy and secure contract renewals.');
+    recs.long.push('Aim for a Services / License ratio above '+inputs.servicesToLicenseRatio+' : 1 by broadening the recurring offerings catalog (Managed Detection, AI Observability).');
+    recs.long.push('Build a dedicated Observability practice with a clear certification path to sustain growth over 3 to 5 years.');
+    recs.long.push('Negotiate a joint investment plan with Grafana Labs (co-marketing, enablement) proportionate to the 5-year opportunity of '+fmtEUR(m.value5y.revenue)+'.');
+  } else {
+    if (inputs.obsMaturity<=2) recs.court.push('Prioriser un programme de certification Grafana pour les '+nbCA+' consultants et architectes afin de fiabiliser la delivery avant d\'accélérer commercialement.');
+    else recs.court.push('Lancer 3 à 5 Assessments Grafana chez les comptes existants à plus fort potentiel pour générer des références rapides.');
+    if (m.utilization>90) recs.court.push('Capacité de delivery proche de la saturation ('+util+') : recruter ou sous-traiter avant de signer de nouveaux clients ciblés.');
+    else if (m.utilization<50) recs.court.push('Capacité de delivery disponible ('+util+' d\'utilisation) : accélérer la prospection sans risque de sur-booking.');
+    recs.court.push('Mettre en place un tableau de bord de pipeline dédié aux '+targeted+' clients ciblés pour fiabiliser le taux de conversion.');
+    recs.moyen.push('Packager une offre Managed Grafana / Support Premium pour faire croître la part de revenus récurrents (objectif : dépasser '+fmtPct(Math.max(50, inputs.recurringServicesPct+10))+').');
+    recs.moyen.push('Former une practice FinOps / SRE dédiée pour capter la couche Advisory, généralement la plus margée.');
+    recs.moyen.push('Structurer une offre Formation packagée pour accélérer l\'autonomie client et sécuriser le renouvellement des contrats.');
+    recs.long.push('Viser un ratio Services / Licences supérieur à '+inputs.servicesToLicenseRatio+' : 1 en élargissant le catalogue d\'offres récurrentes (Managed Detection, AI Observability).');
+    recs.long.push('Structurer une practice Observability dédiée avec un chemin de certification clair pour soutenir la croissance sur 3 à 5 ans.');
+    recs.long.push('Négocier un plan d\'investissement conjoint avec Grafana Labs (co-marketing, enablement) proportionné à l\'opportunité 5 ans de '+fmtEUR(m.value5y.revenue)+'.');
+  }
+
+  document.getElementById('recoCourt').innerHTML = recs.court.map(r=>'<li>'+r+'</li>').join('');
+  document.getElementById('recoMoyen').innerHTML = recs.moyen.map(r=>'<li>'+r+'</li>').join('');
+  document.getElementById('recoLong').innerHTML = recs.long.map(r=>'<li>'+r+'</li>').join('');
+}
+
+function renderFin(m){
+  const EN = lang==='en';
+  let header = `<tr><th>${EN?'Line':'Ligne'}</th>` + m.years.map(y=>`<th class="num">${t('yearN', y.year)}</th>`).join('') + `<th class="num">${EN?'5-year total':'Cumul 5 ans'}</th></tr>`;
+  const growthFactor = y => Math.pow(1+m.growthPct/100, y-1);
+  const lines = [
+    [tx({fr:'Revenus licences',en:'License revenue'}), m.revLicense], [tx({fr:'Revenus support',en:'Support revenue'}), m.revSupport], [tx({fr:'Revenus Professional Services',en:'Professional Services revenue'}), m.revPS],
+    [tx({fr:'Revenus Managed Services',en:'Managed Services revenue'}), m.revManaged], [tx({fr:'Revenus Advisory',en:'Advisory revenue'}), m.revAdvisory], [tx({fr:'Revenus Formation',en:'Training revenue'}), m.revTraining],
+  ];
+  const rows = lines.map(l=>{
+    const vals = m.years.map(y=> l[1]*growthFactor(y.year));
+    const cum = vals.reduce((a,b)=>a+b,0);
+    return '<tr><td>'+l[0]+'</td>' + vals.map(v=>'<td class="num">'+fmtEUR(v)+'</td>').join('') + '<td class="num">'+fmtEUR(cum)+'</td></tr>';
+  }).join('');
+  const totalRow = `<tr><td><strong>${EN?'Total revenue':'Revenu total'}</strong></td>` + m.years.map(y=>'<td class="num"><strong>'+fmtEUR(y.revenue)+'</strong></td>').join('') + '<td class="num"><strong>'+fmtEUR(m.value5y.revenue)+'</strong></td></tr>';
+  const profitRow = `<tr><td><strong>${EN?'Gross profit':'Profit brut'}</strong></td>` + m.years.map(y=>'<td class="num"><strong>'+fmtEUR(y.profit)+'</strong></td>').join('') + '<td class="num"><strong>'+fmtEUR(m.value5y.profit)+'</strong></td></tr>';
+  document.getElementById('finTable').innerHTML = header + rows + totalRow + profitRow;
+}
+
+function renderJson(inputs, all){
+  const payload = {
+    generatedAt: new Date().toISOString(),
+    lang,
+    partner: {
+      partnerType: inputs.partnerType, country: inputs.country, companySize: inputs.companySize,
+      nbConsultants: inputs.nbConsultants, nbArchitects: inputs.nbArchitects, nbEngineers: inputs.nbEngineers,
+      nbSales: inputs.nbSales, nbActiveClients: inputs.nbActiveClients, sectors: inputs.sectors,
+      obsMaturity: inputs.obsMaturity, shareServices: inputs.shareServices, shareSoftware: inputs.shareSoftware, shareManaged: inputs.shareManaged,
+    },
+    commercialAssumptions: {
+      targetedClients: inputs.targetedClients, conversionRate: inputs.conversionRate, avgProjectsPerClient: inputs.avgProjectsPerClient,
+      avgDailyRate: inputs.avgDailyRate, serviceDaysPerProject: inputs.serviceDaysPerProject, projectValue: inputs.projectValue,
+      marginRate: inputs.marginRate, recurringServicesPct: inputs.recurringServicesPct, avgContractDurationMonths: inputs.avgContractDurationMonths,
+      servicesToLicenseRatio: inputs.servicesToLicenseRatio,
+    },
+    advancedAssumptions: {
+      bucketWeights: inputs.bucketWeights, supportAsPctOfLicense: inputs.supportAsPctOfLicense,
+      workingDaysPerYear: inputs.workingDaysPerYear, licenseMarginPct: inputs.licenseMarginPct,
+      investment: inputs.investment, opexRatio: inputs.opexRatio, growth: inputs.growth,
+    },
+    servicesOffered: inputs.selectedServices,
+    activeScenario,
+    scenarios: all,
+  };
+  document.getElementById('jsonOut').textContent = JSON.stringify(payload, null, 2);
+  return payload;
+}
+
+/* ============================== IMPORT / LOAD ============================== */
+function populateFormFromPayload(payload, silent){
+  try{
+    if (payload.lang==='fr'||payload.lang==='en'){ lang = payload.lang; try{ localStorage.setItem('gpbc_lang', lang); }catch(e){} }
+    const p = payload.partner||{}, c = payload.commercialAssumptions||{}, adv = payload.advancedAssumptions||{};
+    setVal('partnerType', p.partnerType); setVal('country', p.country); setVal('companySize', p.companySize);
+    setVal('nbConsultants', p.nbConsultants); setVal('nbArchitects', p.nbArchitects); setVal('nbEngineers', p.nbEngineers);
+    setVal('nbSales', p.nbSales); setVal('nbActiveClients', p.nbActiveClients); setVal('sectors', p.sectors);
+    setVal('obsMaturity', p.obsMaturity);
+    if (p.obsMaturity!==undefined) document.getElementById('obsMaturityOut').textContent = p.obsMaturity;
+    setVal('shareServices', p.shareServices); setVal('shareSoftware', p.shareSoftware); setVal('shareManaged', p.shareManaged);
+    setVal('targetedClients', c.targetedClients); setVal('conversionRate', c.conversionRate); setVal('avgProjectsPerClient', c.avgProjectsPerClient);
+    setVal('avgDailyRate', c.avgDailyRate); setVal('serviceDaysPerProject', c.serviceDaysPerProject);
+    setVal('marginRate', c.marginRate); setVal('recurringServicesPct', c.recurringServicesPct); setVal('avgContractDurationMonths', c.avgContractDurationMonths);
+    setVal('servicesToLicenseRatio', c.servicesToLicenseRatio);
+    if (c.servicesToLicenseRatio!==undefined) document.getElementById('stlOut').textContent = c.servicesToLicenseRatio;
+    const bw = adv.bucketWeights || {};
+    setVal('psWeight', bw.ps); setVal('managedWeight', bw.managed); setVal('advisoryWeight', bw.advisory); setVal('trainingWeight', bw.training);
+    setVal('supportAsPctOfLicense', adv.supportAsPctOfLicense); setVal('workingDaysPerYear', adv.workingDaysPerYear);
+    setVal('licenseMarginPct', adv.licenseMarginPct); setVal('investment', adv.investment); setVal('opexRatio', adv.opexRatio);
+    if (adv.growth){ setVal('growthConservative', adv.growth.conservative); setVal('growthRealistic', adv.growth.realistic); setVal('growthAmbitious', adv.growth.ambitious); }
+    document.querySelectorAll('.svc').forEach(el=> el.checked=false);
+    (payload.servicesOffered||[]).forEach(s=>{ const el=document.querySelector('.svc[data-id="'+s.id+'"]'); if (el) el.checked=true; });
+    if (payload.activeScenario){ activeScenario = payload.activeScenario; document.querySelectorAll('.scenario-switch button').forEach(b=> b.classList.toggle('active', b.dataset.scn===activeScenario)); }
+    applyStaticI18n();
+    renderAll();
+  } catch(e){ if(!silent) alert(t('alertInvalidJson')); else renderAll(); }
+}
+
+document.getElementById('loadJsonInput').addEventListener('change', function(e){
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try{ const payload = JSON.parse(ev.target.result); populateFormFromPayload(payload); }
+    catch(err){ alert(t('alertUnreadable')); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+/* ============================== TABS / SCENARIOS / BUTTONS ============================== */
+function switchTab(tabId){
+  document.querySelectorAll('.tab-btn').forEach(b=>{ const on=b.dataset.tab===tabId; b.classList.toggle('active', on); b.setAttribute('aria-selected', on?'true':'false'); });
+  document.querySelectorAll('.tab-panel').forEach(p=> p.classList.toggle('active', p.id==='tab-'+tabId));
+}
+document.querySelectorAll('.tab-btn').forEach(b=> b.addEventListener('click', ()=> switchTab(b.dataset.tab)));
+
+document.querySelectorAll('.scenario-switch button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    activeScenario = b.dataset.scn;
+    document.querySelectorAll('.scenario-switch button').forEach(x=>x.classList.toggle('active', x===b));
+    renderAll();
+  });
+});
+
+document.getElementById('calcBtn').addEventListener('click', renderAll);
+document.getElementById('jsonBtn').addEventListener('click', ()=>{
+  const payload = lastResult ? renderJson(lastResult.inputs, lastResult.all) : null;
+  if (!payload) return;
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'business_case_partenaire_grafana.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+document.getElementById('printBtn').addEventListener('click', ()=>{ switchTab('summary'); setTimeout(()=>{ window.print(); }, 150); });
+
+/* live recalc (debounced) so the model reacts as inputs change */
+let recalcTimer=null;
+document.querySelector('.panel-form').addEventListener('input', ()=>{ clearTimeout(recalcTimer); recalcTimer=setTimeout(renderAll, 300); });
+document.querySelector('.panel-form').addEventListener('change', ()=>{ clearTimeout(recalcTimer); recalcTimer=setTimeout(renderAll, 300); });
+
+/* ============================== INIT ============================== */
+(function init(){
+  applyStaticI18n();
+  let restored=false;
+  try{
+    const raw = localStorage.getItem('gpbc_state');
+    if(raw){ populateFormFromPayload(JSON.parse(raw), true); restored=true; }
+  }catch(e){}
+  if(!restored) renderAll();
+})();
+</script>
+</body>
+</html>
