@@ -4,6 +4,8 @@ Outil interne d'évaluation objective d'un partenaire Grafana Labs selon quatre 
 
 Application autonome, sans dépendance ni build : tout tient dans `index.html` et tourne 100 % en local dans le navigateur. Aucune donnée n'est envoyée sur le réseau ; l'état est sauvegardé via `localStorage`.
 
+Interface **bilingue FR / EN** (bascule en haut à droite, langue détectée automatiquement au premier lancement selon le navigateur).
+
 ## Utilisation
 
 Ouvrir `index.html` dans un navigateur (garder le dossier `assets/` à côté pour le logo).
@@ -16,7 +18,7 @@ Ouvrir `index.html` dans un navigateur (garder le dossier `assets/` à côté po
 - **Preuve/justification par critère** (lien, certification, référence client), reprise dans le rapport.
 - **Suggestions de red flags** déduites du profil (non destructives).
 - **Radar** des 4 piliers, **jauge** de score, barres de progression.
-- **Portfolio** : matrice Potentiel × Volonté, comparaison radar multi-partenaires, historique du score (sparkline), export CSV.
+- **Portfolio** : matrice Potentiel × Volonté, comparaison radar multi-partenaires, historique du score (sparkline), recherche et tri de la liste, export CSV (localisé).
 - **Exports** : JSON (backup/partage), rapport PDF (impression), brief meeting en Markdown / presse-papier.
 
 ## Structure

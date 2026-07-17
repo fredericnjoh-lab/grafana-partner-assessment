@@ -240,6 +240,36 @@
 
   footer{text-align:center;color:var(--muted-dim);font-size:11px;padding:24px;}
 
+  /* ---------- ACCESSIBILITY & POLISH ---------- */
+  /* Visible keyboard focus on every interactive control (mouse clicks stay clean). */
+  a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,
+  [tabindex]:focus-visible,.chk:focus-within,label:focus-within{
+    outline:2px solid var(--orange-2);outline-offset:2px;border-radius:8px;}
+  .langsw button:focus-visible,nav button:focus-visible,.levels button:focus-visible{outline-offset:-2px;}
+
+  /* subtle entrance when switching screens */
+  @keyframes screenIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+  #main.screen-in{animation:screenIn .26s cubic-bezier(.4,0,.2,1);}
+
+  /* custom scrollbars (nav overflow, page) */
+  nav::-webkit-scrollbar{height:0;}
+  body::-webkit-scrollbar{width:11px;}
+  body::-webkit-scrollbar-thumb{background:var(--panel3);border-radius:8px;border:3px solid var(--bg);}
+  body::-webkit-scrollbar-thumb:hover{background:#3a3d47;}
+  *{scrollbar-width:thin;scrollbar-color:var(--panel3) transparent;}
+
+  /* fix sticky header/nav overlap on narrow screens where the header wraps */
+  @media(max-width:700px){
+    header{position:relative;top:auto;}
+    nav{position:relative;top:auto;}
+  }
+
+  @media(prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;
+      transition-duration:.001ms !important;scroll-behavior:auto !important;}
+    #main.screen-in{animation:none;}
+  }
+
   /* provisional score */
   .prov-tag{display:inline-block;background:#3a2414;color:var(--orange-2);border:1px dashed var(--orange);
     border-radius:6px;padding:2px 8px;font-size:10.5px;font-weight:700;letter-spacing:.02em;}
@@ -301,9 +331,9 @@
   </div>
   <div class="header-right">
     <div class="toolbtns" id="toolbtns"></div>
-    <div class="langsw" id="langsw">
-      <button data-l="fr" onclick="setLang('fr')">FR</button>
-      <button data-l="en" onclick="setLang('en')">EN</button>
+    <div class="langsw" id="langsw" role="group" aria-label="Language / Langue">
+      <button data-l="fr" onclick="setLang('fr')" aria-label="Français">FR</button>
+      <button data-l="en" onclick="setLang('en')" aria-label="English">EN</button>
     </div>
     <span id="saveIndic"></span>
     <div id="headerScore"></div>
@@ -320,7 +350,15 @@
 <script>
 /* ============================== I18N ============================== */
 
-let lang = (function(){ try{ return localStorage.getItem('gpae_lang')||'fr'; }catch(e){ return 'fr'; } })();
+let lang = (function(){
+  try{
+    const stored = localStorage.getItem('gpae_lang');
+    if(stored==='fr'||stored==='en') return stored;
+    // First visit: follow the browser preference, default to French.
+    const nav = (navigator.languages && navigator.languages[0]) || navigator.language || 'fr';
+    return /^en\b/i.test(nav) ? 'en' : 'fr';
+  }catch(e){ return 'fr'; }
+})();
 function setLang(l){ lang=l; try{ localStorage.setItem('gpae_lang', l); }catch(e){} document.documentElement.setAttribute('lang',l); render(); }
 function tx(v){ return (v && typeof v==='object' && !Array.isArray(v)) ? (v[lang]!=null?v[lang]:v.fr) : v; }
 function t(key, ...args){
@@ -382,6 +420,7 @@ const STR = {
   thDimension:{fr:"Dimension", en:"Dimension"}, thScore:{fr:"Score", en:"Score"}, thMax:{fr:"Max", en:"Max"},
   thProgress:{fr:"Progression", en:"Progress"}, thEvidence:{fr:"Niveau de preuve", en:"Evidence level"},
   bonusRow:{fr:"Bonus Pépite", en:"Nugget bonus"}, signals:{fr:"signaux", en:"signals"},
+  redFlagCount:{fr:(n)=>`${n} red flag${n>1?'s':''}`, en:(n)=>`${n} red flag${n>1?'s':''}`},
   finalScore:{fr:"Score final", en:"Final score"},
   classifTitle:{fr:"3. Classification", en:"3. Classification"},
   priorityLevel:{fr:"Niveau de priorité", en:"Priority level"},
@@ -460,6 +499,11 @@ const STR = {
   cmpHint:{fr:"Sélectionnez jusqu'à 3 partenaires pour superposer leurs profils Skill / Scale / Will / Fit.", en:"Select up to 3 partners to overlay their Skill / Scale / Will / Fit profiles."},
   cmpEmpty:{fr:"Cochez au moins un partenaire pour afficher le radar.", en:"Check at least one partner to display the radar."},
   listTitle:{fr:"Liste", en:"List"}, exportCsv:{fr:"↓ Export CSV", en:"↓ Export CSV"},
+  pfSearchPh:{fr:"Rechercher un partenaire…", en:"Search a partner…"},
+  pfSortScore:{fr:"Trier : score", en:"Sort: score"}, pfSortName:{fr:"Trier : nom", en:"Sort: name"},
+  pfSortRecent:{fr:"Trier : récent", en:"Sort: recent"},
+  pfCount:{fr:(n,tot)=>`${n} / ${tot} partenaire${tot>1?'s':''}`, en:(n,tot)=>`${n} / ${tot} partner${tot>1?'s':''}`},
+  pfNoMatch:{fr:"Aucun partenaire ne correspond à la recherche.", en:"No partner matches the search."},
   thPartner:{fr:"Partenaire", en:"Partner"}, thType:{fr:"Type", en:"Type"}, thTrend:{fr:"Tendance", en:"Trend"},
   thCategory:{fr:"Catégorie", en:"Category"}, thSaved:{fr:"Enregistré", en:"Saved"},
   openBtn:{fr:"Ouvrir", en:"Open"}, delBtn:{fr:"Suppr.", en:"Delete"},
@@ -662,6 +706,8 @@ const QUESTION_BANK = [
 let state = loadState() || freshState();
 let currentScreen = 'profile';
 let compareSel = [];
+let portfolioQuery = '';
+let portfolioSort = 'score';
 const COMPARE_COLORS = ['#f46800','#5b9de3','#a352cc'];
 
 function freshState(){
@@ -1147,7 +1193,7 @@ function renderDecision(){
   ${scorecardRow('Will', c.will, 30, 'will')}
   ${scorecardRow('Strategic Fit', c.fit, 15, 'fit')}
   <tr><td>${t('bonusRow')}</td><td colspan="2">${c.bonus>0?'+':''}${c.bonus}</td><td></td><td>${Object.values(state.bonuses||{}).filter(Boolean).length} ${t('signals')}</td></tr>
-  <tr><td>${t('penaltyLab')}</td><td colspan="2" style="color:var(--red)">${c.penalty}</td><td></td><td>${nPen} red flag(s)</td></tr>
+  <tr><td>${t('penaltyLab')}</td><td colspan="2" style="color:var(--red)">${c.penalty}</td><td></td><td>${t('redFlagCount', nPen)}</td></tr>
   <tr style="font-weight:800"><td>${t('finalScore')}</td><td colspan="2" style="color:${col}">${c.final.toFixed(0)} / 100</td><td></td><td>—</td></tr>
   </tbody></table></div>`;
 
@@ -1757,10 +1803,39 @@ function renderPortfolio(){
     html += renderCompareCard(list);
   }
 
-  html += `<div class="card"><div class="toolbar"><h2 style="margin:0"><span class="accent"></span>${t('listTitle')}</h2>
-    <button class="iconbtn" onclick="exportPortfolioCSV()">${t('exportCsv')}</button></div>
-  <table><thead><tr><th>${t('thPartner')}</th><th>${t('thType')}</th><th>${t('thScore')}</th><th>${t('thTrend')}</th><th>${t('thCategory')}</th><th>${t('thSaved')}</th><th></th></tr></thead><tbody>
-  ${list.slice().sort((a,b)=>((b.computed||b.scores).final||0)-((a.computed||a.scores).final||0)).map(p=>{
+  html += `<div class="card"><div class="toolbar"><h2 style="margin:0"><span class="accent"></span>${t('listTitle')} <span id="pfCount" style="color:var(--muted);font-weight:500;font-size:12px;margin-left:6px"></span></h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input type="text" id="pfSearch" placeholder="${t('pfSearchPh')}" value="${escapeHtml(portfolioQuery)}" oninput="onPortfolioSearch(this.value)" style="width:210px;font-size:12.5px">
+      <select id="pfSort" onchange="onPortfolioSort(this.value)" style="width:auto;font-size:12.5px">
+        <option value="score" ${portfolioSort==='score'?'selected':''}>${t('pfSortScore')}</option>
+        <option value="name" ${portfolioSort==='name'?'selected':''}>${t('pfSortName')}</option>
+        <option value="recent" ${portfolioSort==='recent'?'selected':''}>${t('pfSortRecent')}</option>
+      </select>
+      <button class="iconbtn" onclick="exportPortfolioCSV()">${t('exportCsv')}</button>
+    </div></div>
+  <table><thead><tr><th>${t('thPartner')}</th><th>${t('thType')}</th><th>${t('thScore')}</th><th>${t('thTrend')}</th><th>${t('thCategory')}</th><th>${t('thSaved')}</th><th></th></tr></thead>
+  <tbody id="pfTbody">${portfolioRowsHtml(list)}</tbody></table></div>`;
+
+  document.getElementById('main').innerHTML = html;
+  updatePfCount(list);
+}
+
+function filteredSortedPortfolio(list){
+  const q = portfolioQuery.trim().toLowerCase();
+  let out = q ? list.filter(p=>{
+    const hay = [p.profile.partnerName,p.profile.partnerType,p.profile.country,p.category].filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(q);
+  }) : list.slice();
+  const fin = p=>((p.computed||p.scores).final||0);
+  if(portfolioSort==='name') out.sort((a,b)=>(a.profile.partnerName||'').localeCompare(b.profile.partnerName||''));
+  else if(portfolioSort==='recent') out.sort((a,b)=>new Date(b.savedAt)-new Date(a.savedAt));
+  else out.sort((a,b)=>fin(b)-fin(a));
+  return out;
+}
+function portfolioRowsHtml(list){
+  const rows = filteredSortedPortfolio(list);
+  if(!rows.length) return `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:26px">${t('pfNoMatch')}</td></tr>`;
+  return rows.map(p=>{
     const cc=p.computed||p.scores;
     return `<tr>
     <td><b>${escapeHtml(p.profile.partnerName||'—')}</b></td>
@@ -1770,11 +1845,19 @@ function renderPortfolio(){
     <td>${p.category}</td>
     <td>${new Date(p.savedAt).toLocaleDateString(lang==='en'?'en-US':'fr-FR')}</td>
     <td style="white-space:nowrap"><button class="btn secondary" onclick="loadFromPortfolio('${p.id}')">${t('openBtn')}</button> <button class="btn ghost" onclick="deleteFromPortfolio('${p.id}')">${t('delBtn')}</button></td>
-  </tr>`;}).join('')}
-  </tbody></table></div>`;
-
-  document.getElementById('main').innerHTML = html;
+  </tr>`;}).join('');
 }
+function updatePfCount(list){
+  const el=document.getElementById('pfCount'); if(!el) return;
+  el.textContent=t('pfCount', filteredSortedPortfolio(list).length, list.length);
+}
+function refreshPortfolioList(){
+  const list = loadPortfolio();
+  const tb=document.getElementById('pfTbody'); if(tb) tb.innerHTML=portfolioRowsHtml(list);
+  updatePfCount(list);
+}
+function onPortfolioSearch(v){ portfolioQuery=v; refreshPortfolioList(); }
+function onPortfolioSort(v){ portfolioSort=v; refreshPortfolioList(); }
 function renderCompareCard(list){
   compareSel = compareSel.filter(id=>list.some(p=>p.id===id));
   const axes = ['Skill','Scale','Will','Fit'];
@@ -1839,11 +1922,15 @@ function deleteFromPortfolio(id){
 }
 function exportPortfolioCSV(){
   const list = loadPortfolio();
-  const rows = [['Partenaire','Type','Pays','Score','Skill','Scale','Will','Fit','Categorie','Verdict','Enregistre']];
+  const loc = lang==='en'?'en-US':'fr-FR';
+  const header = lang==='en'
+    ? ['Partner','Type','Country','Score','Skill','Scale','Will','Fit','Category','Verdict','Saved']
+    : ['Partenaire','Type','Pays','Score','Skill','Scale','Will','Fit','Catégorie','Verdict','Enregistré'];
+  const rows = [header];
   list.forEach(p=>{ const cc=p.computed||p.scores;
     rows.push([p.profile.partnerName||'',p.profile.partnerType||'',p.profile.country||'',
       (cc.final||0).toFixed(0),cc.skill||'',cc.scale||'',cc.will||'',cc.fit||'',p.category||'',p.verdict||'',
-      new Date(p.savedAt).toLocaleDateString('fr-FR')]);
+      new Date(p.savedAt).toLocaleDateString(loc)]);
   });
   const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob = new Blob(['\ufeff'+csv],{type:'text/csv'});
@@ -1863,7 +1950,11 @@ function renderChrome(){
      <button class="iconbtn" onclick="document.getElementById('importFile').click()" title="${t('tbImportT')}">${t('tbImport')}</button>
      <button class="iconbtn" onclick="window.print()" title="${t('tbPdfT')}">${t('tbPdf')}</button>`;
   const si=document.getElementById('saveIndic'); if(si && !si.classList.contains('flash')) si.textContent=t('ready');
-  document.querySelectorAll('#langsw button').forEach(b=>b.classList.toggle('on', b.dataset.l===lang));
+  document.querySelectorAll('#langsw button').forEach(b=>{
+    const on = b.dataset.l===lang;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on?'true':'false');
+  });
 }
 function render(){
   renderChrome();
@@ -1875,6 +1966,8 @@ function render(){
   else if(currentScreen==='meeting') renderMeeting();
   else if(currentScreen==='plan') renderPlan();
   else if(currentScreen==='portfolio') renderPortfolio();
+  const m=document.getElementById('main');
+  if(m){ m.classList.remove('screen-in'); void m.offsetWidth; m.classList.add('screen-in'); }
 }
 
 render();
