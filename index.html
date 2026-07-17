@@ -334,7 +334,7 @@
     </div>
     <span id="saveIndic"></span>
     <div id="headerScore"></div>
-    <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importJSON(event)">
+    <input type="file" id="importFile" accept=".json,.xlsx,.xls,.csv,application/json" style="display:none" onchange="importJSON(event)">
   </div>
 </header>
 
@@ -370,7 +370,7 @@ const STR = {
   footer:{fr:"Prototype interne — scores calculés localement dans votre navigateur (aucune donnée envoyée). Sauvegarde automatique via localStorage. Export JSON pour backup/partage.", en:"Internal prototype — scores computed locally in your browser (no data sent). Auto-saved via localStorage. JSON export for backup/sharing."},
   tbNew:{fr:"＋ Nouveau", en:"＋ New"}, tbNewT:{fr:"Nouvelle évaluation", en:"New assessment"},
   tbExport:{fr:"↧ Export JSON", en:"↧ Export JSON"}, tbExportT:{fr:"Exporter en JSON", en:"Export as JSON"},
-  tbImport:{fr:"↥ Importer", en:"↥ Import"}, tbImportT:{fr:"Importer un JSON", en:"Import a JSON"},
+  tbImport:{fr:"↥ Importer", en:"↥ Import"}, tbImportT:{fr:"Importer un fichier (JSON, Excel .xlsx, CSV)", en:"Import a file (JSON, Excel .xlsx, CSV)"},
   tbPdf:{fr:"⎙ PDF", en:"⎙ PDF"}, tbPdfT:{fr:"Imprimer / PDF", en:"Print / PDF"},
   ready:{fr:"Prêt", en:"Ready"}, saved:{fr:"Sauvegardé ✓", en:"Saved ✓"}, saved2:{fr:"Sauvegardé", en:"Saved"},
   provisional:{fr:"provisoire", en:"provisional"}, provScore:{fr:"score provisoire", en:"provisional score"},
@@ -515,6 +515,9 @@ const STR = {
   cBulkFormat:{fr:"Format attendu : un tableau JSON, ou un objet { \"partners\": [ … ] }.", en:"Expected format: a JSON array, or an object { \"partners\": [ … ] }."},
   cBulkEmpty:{fr:"Aucune entrée valide (chaque partenaire doit avoir un champ \"profile\").", en:"No valid entry (each partner must have a \"profile\" field)."},
   cBulkDone:{fr:(a,u)=>`Import terminé : ${a} ajouté(s), ${u} mis à jour.`, en:(a,u)=>`Import done: ${a} added, ${u} updated.`},
+  cSheetEmpty:{fr:"Aucune ligne exploitable. Vérifiez qu'une colonne « Nom du partenaire » est renseignée (utilisez le modèle).", en:"No usable row. Make sure a \"Partner name\" column is filled in (use the template)."},
+  tmplBtn:{fr:"↓ Modèle Excel/CSV", en:"↓ Excel/CSV template"},
+  sheetFileHint:{fr:"Ou importez directement un fichier via « ↥ Importer » (en haut) : JSON, Excel .xlsx ou CSV. Téléchargez d'abord le modèle pour avoir les bonnes colonnes.", en:"Or import a file directly via \"↥ Import\" (top bar): JSON, Excel .xlsx or CSV. Download the template first to get the right columns."},
 
   // alerts / confirms
   cNew:{fr:"Démarrer une nouvelle évaluation ? L'évaluation en cours sera effacée (pensez à l'enregistrer dans le portfolio ou à l'exporter avant).", en:"Start a new assessment? The current one will be cleared (consider saving it to the portfolio or exporting it first)."},
@@ -762,6 +765,7 @@ function exportJSON(){
 }
 function importJSON(e){
   const file = e.target.files[0]; if(!file) return;
+  if(/\.(xlsx|xls|csv)$/i.test(file.name||'')){ importSpreadsheet(file); e.target.value=''; return; }
   const reader = new FileReader();
   reader.onload = ()=>{
     try{
@@ -826,6 +830,87 @@ function toggleBulkImport(){
   if(open){ const ta=document.getElementById('bulkBox'); if(ta) ta.focus(); }
 }
 function runBulkImport(){ const ta=document.getElementById('bulkBox'); if(ta) bulkImportPortfolio(ta.value); }
+
+/* ---- spreadsheet (Excel .xlsx / .csv) import ---- */
+// SheetJS is loaded lazily, only the first time a spreadsheet is imported.
+let _xlsxPromise=null;
+function loadXLSX(){
+  if(window.XLSX) return Promise.resolve(window.XLSX);
+  if(_xlsxPromise) return _xlsxPromise;
+  _xlsxPromise = new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload=()=>window.XLSX?res(window.XLSX):rej(new Error('SheetJS'));
+    s.onerror=()=>rej(new Error('SheetJS'));
+    document.head.appendChild(s);
+  });
+  return _xlsxPromise;
+}
+function normHdr(s){ return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,''); }
+function buildImportMaps(){
+  const prof={}, crit={};
+  PROFILE_FIELDS.forEach(f=>{ [f.k, f.l&&f.l.fr, f.l&&f.l.en].forEach(x=>{ if(x) prof[normHdr(x)]=f; }); });
+  Object.values(PILLARS).forEach(p=>p.criteria.forEach(c=>{ [c.k, c.l&&c.l.fr, c.l&&c.l.en].forEach(x=>{ if(x) crit[normHdr(x)]=c.k; }); }));
+  return {prof,crit};
+}
+function parseLevel(v){
+  const n=normHdr(v);
+  if(n===''||n==='unknown'||n==='na'||n==='n'||n==='nonrenseigne') return null;
+  if(['proven','confirme','confirmeavecpreuve','oui','ouiconfirme','yes','x','prouve','confirmed','1'].includes(n)) return 'proven';
+  if(['declared','declare','declaresanspreuve','declaredgnoproof','partiel','partial','05'].includes(n)) return 'declared';
+  if(['absent','non','no','0'].includes(n)) return 'absent';
+  const num=parseFloat(String(v).replace(',','.'));
+  if(!isNaN(num)){ if(num>=0.75) return 'proven'; if(num>=0.25) return 'declared'; return 'absent'; }
+  return null;
+}
+function importSpreadsheet(file){
+  const isCsv=/\.csv$/i.test(file.name);
+  loadXLSX().then(XLSX=>{
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const wb = isCsv ? XLSX.read(reader.result,{type:'string'}) : XLSX.read(new Uint8Array(reader.result),{type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws,{defval:''});
+        const {prof,crit}=buildImportMaps();
+        const entries=[];
+        rows.forEach(row=>{
+          const profile={}, scores={};
+          Object.keys(row).forEach(h=>{
+            const val=row[h]; const nh=normHdr(h);
+            if(prof[nh]){
+              const f=prof[nh];
+              if(f.t==='checklist') profile[f.k]=String(val).split(/[;,/]/).map(s=>s.trim()).filter(Boolean);
+              else profile[f.k]=val;
+            } else if(crit[nh]){
+              const lv=parseLevel(val); if(lv) scores[crit[nh]]=lv;
+            }
+          });
+          if(profile.partnerName && String(profile.partnerName).trim()) entries.push({profile,scores});
+        });
+        if(!entries.length){ alert(t('cSheetEmpty')); return; }
+        bulkImportPortfolio(JSON.stringify(entries));
+      }catch(err){ alert(t('cImportInvalid', err.message)); }
+    };
+    if(isCsv) reader.readAsText(file); else reader.readAsArrayBuffer(file);
+  }).catch(err=>alert(t('cImportInvalid', err.message)));
+}
+// Download a CSV template with the correct columns (profile fields + one column per scored criterion).
+function downloadImportTemplate(){
+  const profCols = PROFILE_FIELDS.map(f=>tx(f.l));
+  const critCols = []; Object.values(PILLARS).forEach(p=>p.criteria.forEach(c=>critCols.push(tx(c.l))));
+  const headers = profCols.concat(critCols);
+  const example = headers.map((h,i)=>{
+    if(i===0) return lang==='en'?'Example Partner':'Partenaire exemple';
+    if(i<profCols.length) return '';
+    return lang==='en'?'proven':'confirmé';
+  });
+  const esc=s=>{ s=String(s==null?'':s); return /[",;\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
+  const csv=[headers.map(esc).join(','), example.map(esc).join(',')].join('\r\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='gpae-modele-partenaires.csv'; a.click(); URL.revokeObjectURL(a.href);
+}
 
 /* ============================== SCORING ENGINE ============================== */
 
@@ -1834,8 +1919,10 @@ function reevalDate(cls){
 function bulkImportHtml(){
   return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 2px">
       <button class="iconbtn" onclick="toggleBulkImport()">${t('bulkBtn')}</button>
+      <button class="iconbtn" onclick="downloadImportTemplate()">${t('tmplBtn')}</button>
     </div>
     <div id="bulkPanel" style="display:none;margin:12px 0 4px">
+      <p class="hint" style="margin:0 0 6px">${t('sheetFileHint')}</p>
       <p class="hint" style="margin:0 0 8px">${t('bulkHint')}</p>
       <textarea id="bulkBox" spellcheck="false" placeholder='[ { "profile": { "partnerName": "Acme" }, "scores": { "obs_expertise": "proven" } } ]' style="min-height:160px;font-family:var(--font-mono);font-size:12px;line-height:1.5"></textarea>
       <div style="display:flex;gap:8px;margin-top:8px">
