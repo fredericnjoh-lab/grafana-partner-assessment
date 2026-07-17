@@ -4,81 +4,122 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Simulateur Business Case Partenaire — Grafana Labs</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<meta name="description" content="Simulateur bilingue FR/EN modélisant l'opportunité économique d'un partenariat Grafana Labs : revenus, marge, ROI, projection 5 ans et ratio Services : Licence.">
+<meta name="theme-color" content="#FF671D">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Simulateur Business Case Partenaire — Grafana Labs">
+<meta property="og:description" content="Modélise l'opportunité économique d'un partenariat Grafana Labs : revenus, marge, ROI, projection 5 ans, sensibilité et recommandations. Bilingue FR/EN.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Simulateur Business Case Partenaire — Grafana Labs">
+<meta name="twitter:description" content="Revenus, marge, ROI, projection 5 ans et recommandations d'un partenariat Grafana Labs. Bilingue FR/EN.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20width='24'%20height='24'%20rx='5'%20fill='%23171717'/%3E%3Cpath%20transform='translate(3.6%203.6)%20scale(0.7)'%20fill='%23FF671D'%20d='M23.02%2010.59a8.578%208.578%200%200%200-.862-3.034%208.911%208.911%200%200%200-1.789-2.445c.337-1.342-.413-2.505-.413-2.505-1.292-.08-2.113.4-2.416.62-.052-.02-.102-.044-.154-.064-.22-.089-.446-.172-.677-.247-.231-.073-.47-.14-.711-.197a9.867%209.867%200%200%200-.875-.161C14.557.753%2012.94%200%2012.94%200c-1.804%201.145-2.147%202.744-2.147%202.744l-.018.093c-.098.029-.2.057-.298.088-.138.042-.275.094-.413.143-.138.055-.275.107-.41.166a8.869%208.869%200%200%200-1.557.87l-.063-.029c-2.497-.955-4.716.195-4.716.195-.203%202.658.996%204.33%201.235%204.636a11.608%2011.608%200%200%200-.607%202.635C1.636%2012.677.953%2015.014.953%2015.014c1.926%202.214%204.171%202.351%204.171%202.351.003-.002.006-.002.006-.005.285.509.615.994.986%201.446.156.19.32.371.488.548-.704%202.009.099%203.68.099%203.68%202.144.08%203.553-.937%203.849-1.173a9.784%209.784%200%200%200%203.164.501h.08l.055-.003.107-.002.103-.005.003.002c1.01%201.44%202.788%201.646%202.788%201.646%201.264-1.332%201.337-2.653%201.337-2.94v-.058c0-.02-.003-.039-.003-.06.265-.187.52-.387.758-.6a7.875%207.875%200%200%200%201.415-1.7c1.43.083%202.437-.885%202.437-.885-.236-1.49-1.085-2.216-1.264-2.354z'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root{
-  --bg:#171717; --surface:#1F1F1F; --surface-2:#2A2A2A; --border:#3A3A3A;
-  --text:#FFFFFF; --text-2:#AFAFAF; --orange:#FF671D; --blue:#2970FF;
-  --green:#04BC4C; --yellow:#FFED23; --purple:#D444F1; --red:#E24B4A;
+  --bg:#0B0C0E; --surface:#16181D; --surface-2:#1D2026; --surface-3:#24272E;
+  --border:rgba(255,255,255,.09); --border-2:rgba(255,255,255,.06);
+  --text:#F5F6F7; --text-2:#9AA0A6; --orange:#FF671D; --orange-2:#FF9330; --blue:#3D71D9;
+  --green:#1FB865; --yellow:#F8D648; --purple:#D444F1; --red:#E0576B;
+  --grad:linear-gradient(105deg,#FF9330 0%,#FF671D 52%,#F2495C 100%);
+  --mono:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
 }
 *{box-sizing:border-box;}
-body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;}
-h1,h2,h3,h4{font-family:'Poppins',sans-serif;margin:0 0 8px;font-weight:600;}
-h1{font-size:20px;} h2{font-size:17px;} h3{font-size:14px;color:var(--text-2);text-transform:uppercase;letter-spacing:.04em;font-weight:600;}
-h4{font-size:13px;color:var(--orange);margin:16px 0 6px;}
-p{line-height:1.6;color:#E6E6E6;}
-a{color:var(--orange);}
-header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;}
-header .brand{display:flex;align-items:center;gap:10px;}
-header .brand .dot{width:12px;height:12px;border-radius:50%;background:var(--orange);}
+body{margin:0;color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;
+  background:
+    radial-gradient(1100px 460px at 8% -10%, rgba(255,103,29,.18), transparent 60%),
+    radial-gradient(900px 460px at 100% -12%, rgba(212,68,241,.12), transparent 55%),
+    var(--bg);
+  background-attachment:fixed;}
+h1,h2,h3,h4{font-family:'Inter',sans-serif;margin:0 0 8px;font-weight:700;letter-spacing:-.01em;}
+h1{font-size:21px;} h2{font-size:18px;font-weight:800;} h3{font-size:13px;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
+h4{font-size:13px;font-weight:700;margin:18px 0 6px;color:var(--text);}
+h4::before{content:'';display:inline-block;width:14px;height:3px;border-radius:3px;background:var(--grad);margin-right:8px;vertical-align:middle;}
+p{line-height:1.65;color:#D5D8DC;}
+a{color:var(--orange-2);}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;position:sticky;top:0;z-index:20;
+  background:rgba(11,12,14,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
+header::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:1px;background:var(--grad);opacity:.55;}
+header .brand{display:flex;align-items:center;gap:13px;}
+header .brand .logo{width:34px;height:34px;flex:none;filter:drop-shadow(0 2px 8px rgba(255,103,29,.35));}
+header .brand .logo svg{width:100%;height:100%;display:block;}
+header h1{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800;font-size:20px;}
 header .sub{color:var(--text-2);font-size:12px;}
 .header-right{display:flex;align-items:center;gap:16px;}
-.langsw{display:flex;gap:2px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:2px;}
-.langsw button{background:none;border:none;color:var(--text-2);font-size:11px;font-weight:700;padding:5px 9px;border-radius:6px;cursor:pointer;font-family:inherit;}
-.langsw button.on{background:var(--orange);color:#1a1a1a;}
-.layout{display:grid;grid-template-columns:380px 1fr;gap:0;min-height:calc(100vh - 57px);}
-.panel-form{background:var(--surface);border-right:1px solid var(--border);padding:20px;overflow-y:auto;max-height:calc(100vh - 57px);}
-.panel-results{padding:20px 28px;overflow-y:auto;max-height:calc(100vh - 57px);}
-fieldset{border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin:0 0 14px;}
-legend{font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:var(--orange);padding:0 6px;}
-label{display:block;font-size:12px;color:var(--text-2);margin:8px 0 3px;}
-input[type=text],input[type=number],select{width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 9px;font-size:13px;}
-input[type=range]{width:100%;}
+.langsw{display:flex;gap:2px;background:var(--surface-2);border:1px solid var(--border);border-radius:20px;padding:3px;}
+.langsw button{background:none;border:none;color:var(--text-2);font-size:11px;font-weight:700;padding:5px 11px;border-radius:16px;cursor:pointer;font-family:inherit;transition:.15s;}
+.langsw button.on{background:var(--grad);color:#fff;}
+.layout{display:grid;grid-template-columns:388px 1fr;gap:0;min-height:calc(100vh - 60px);}
+.panel-form{background:rgba(22,24,29,.6);border-right:1px solid var(--border);padding:20px;overflow-y:auto;max-height:calc(100vh - 60px);}
+.panel-results{padding:22px 30px;overflow-y:auto;max-height:calc(100vh - 60px);}
+fieldset{border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin:0 0 14px;background:rgba(29,32,38,.35);}
+legend{font-size:12px;font-weight:700;color:var(--orange-2);padding:0 8px;text-transform:uppercase;letter-spacing:.06em;}
+label{display:block;font-size:12px;color:var(--text-2);margin:9px 0 3px;}
+input[type=text],input[type=number],select{width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:8px 10px;font-size:13px;transition:.15s;}
+input[type=text]:focus,input[type=number]:focus,select:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,103,29,.18);outline:none;}
+input[type=range]{width:100%;accent-color:var(--orange);}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .svc-group{margin:6px 0 10px;}
 .svc-group .cat{font-size:11px;color:var(--text-2);margin:8px 0 4px;font-weight:600;}
-.pill{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--border);border-radius:16px;padding:5px 10px;margin:3px 4px 0 0;font-size:12px;cursor:pointer;}
-.pill input{margin:0;}
+.pill{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--border);border-radius:20px;padding:5px 11px;margin:3px 4px 0 0;font-size:12px;cursor:pointer;transition:.15s;}
+.pill:hover{border-color:var(--orange);}
+.pill input{margin:0;accent-color:var(--orange);}
 details summary{cursor:pointer;color:var(--text-2);font-size:12px;margin:4px 0;}
-button{font-family:'Poppins',sans-serif;font-weight:600;border:none;border-radius:6px;padding:10px 16px;cursor:pointer;font-size:13px;}
-.btn-primary{background:var(--orange);color:#1a1a1a;width:100%;margin-top:6px;}
-.btn-secondary{background:transparent;border:1px solid var(--border);color:var(--text);}
-.tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:18px;position:sticky;top:0;background:var(--bg);padding-top:2px;z-index:10;}
-.tab-btn{background:transparent;color:var(--text-2);padding:9px 14px;border-radius:6px 6px 0 0;font-size:13px;}
-.tab-btn.active{color:var(--orange);background:var(--surface);border:1px solid var(--border);border-bottom:2px solid var(--orange);}
-.tab-panel{display:none;}
+button{font-family:'Inter',sans-serif;font-weight:700;border:none;border-radius:9px;padding:10px 16px;cursor:pointer;font-size:13px;transition:.15s;}
+.btn-primary{background:var(--grad);color:#fff;width:100%;margin-top:8px;box-shadow:0 6px 18px rgba(255,103,29,.28);}
+.btn-primary:hover{filter:brightness(1.06);box-shadow:0 8px 24px rgba(255,103,29,.4);}
+.btn-secondary{background:var(--surface-2);border:1px solid var(--border);color:var(--text);}
+.btn-secondary:hover{border-color:var(--orange);color:var(--orange-2);}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;position:sticky;top:0;background:linear-gradient(180deg,var(--bg) 70%,transparent);padding:6px 0;z-index:10;}
+.tab-btn{background:transparent;color:var(--text-2);padding:8px 14px;border-radius:20px;font-size:13px;font-weight:600;border:1px solid transparent;}
+.tab-btn:hover{color:var(--text);background:var(--surface-2);}
+.tab-btn.active{color:#fff;background:var(--surface-2);border-color:var(--orange);box-shadow:inset 0 -2px 0 0 var(--orange);}
+.tab-panel{display:none;animation:fade .25s ease;}
 .tab-panel.active{display:block;}
-.scenario-switch{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
-.scenario-switch button{background:var(--surface-2);color:var(--text-2);border:1px solid var(--border);padding:8px 14px;}
-.scenario-switch button.active{background:var(--orange);color:#1a1a1a;border-color:var(--orange);}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px;}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
-.card .lbl{font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:.03em;}
-.card .val{font-size:22px;font-weight:600;font-family:'Poppins',sans-serif;margin-top:4px;}
-.card .val.orange{color:var(--orange);} .card .val.blue{color:var(--blue);} .card .val.green{color:var(--green);}
-table{width:100%;border-collapse:collapse;font-size:12.5px;margin:10px 0 20px;}
-th,td{border-bottom:1px solid var(--border);padding:7px 8px;text-align:left;}
-th{color:var(--text-2);font-weight:600;font-size:11.5px;text-transform:uppercase;}
-tr:hover td{background:var(--surface-2);}
-.num{text-align:right;font-variant-numeric:tabular-nums;}
-.chart-box{position:relative;height:280px;margin:10px 0 26px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;}
+@keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+.scenario-switch{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;align-items:center;background:var(--surface-2);border:1px solid var(--border);border-radius:22px;padding:4px;width:fit-content;}
+.scenario-switch button{background:transparent;color:var(--text-2);border:none;padding:7px 16px;border-radius:18px;}
+.scenario-switch button:hover{color:var(--text);}
+.scenario-switch button.active{background:var(--grad);color:#fff;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:14px;margin-bottom:22px;}
+.card{position:relative;background:linear-gradient(180deg,#16181D,#121318);border:1px solid var(--border);border-radius:16px;padding:16px 18px;overflow:hidden;transition:.18s;}
+.card::before{content:'';position:absolute;inset:0 0 auto 0;height:2px;background:var(--grad);opacity:0;transition:.18s;}
+.card:hover{transform:translateY(-2px);border-color:rgba(255,103,29,.4);}
+.card:hover::before{opacity:1;}
+.card .lbl{font-size:10.5px;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;font-weight:600;}
+.card .val{font-size:25px;font-weight:600;font-family:var(--mono);margin-top:6px;letter-spacing:-.02em;}
+.card .val.orange{color:var(--orange-2);} .card .val.blue{color:#6E9BFF;} .card .val.green{color:#3FD98A;}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin:10px 0 22px;}
+th,td{border-bottom:1px solid var(--border-2);padding:8px 9px;text-align:left;}
+th{color:var(--text-2);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
+tr:hover td{background:rgba(255,255,255,.03);}
+.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:12px;}
+.chart-box{position:relative;height:280px;margin:10px 0 26px;background:linear-gradient(180deg,#16181D,#121318);border:1px solid var(--border);border-radius:16px;padding:16px;}
 .chart-box.small{height:230px;}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-.note{background:var(--surface-2);border-left:3px solid var(--orange);padding:10px 12px;border-radius:6px;font-size:12.5px;color:var(--text-2);margin:10px 0 20px;}
+.note{background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);padding:11px 14px;border-radius:10px;font-size:12.5px;color:#C3C7CC;margin:10px 0 20px;}
 .note.warn{border-left-color:var(--yellow);color:var(--yellow);}
 .reclist{margin:0 0 18px;padding-left:18px;}
-.reclist li{margin-bottom:8px;line-height:1.5;}
-pre{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:11.5px;overflow:auto;max-height:520px;color:#C8E6A0;}
+.reclist li{margin-bottom:8px;line-height:1.55;}
+pre{background:#0E0F13;border:1px solid var(--border);border-radius:12px;padding:14px;font-size:11.5px;overflow:auto;max-height:520px;color:#9FE0A6;font-family:var(--mono);}
 .warn{color:var(--yellow);}
 .inline-flex{display:flex;gap:6px;align-items:stretch;}
 .inline-flex input{flex:1;}
 .inline-flex button{white-space:nowrap;padding:7px 10px;font-size:12px;}
 .stl-slider{display:flex;align-items:center;gap:10px;}
-.stl-slider span{font-weight:600;color:var(--orange);min-width:44px;text-align:right;}
+.stl-slider span{font-weight:600;color:var(--orange-2);min-width:44px;text-align:right;font-family:var(--mono);}
 #printHeader{display:none;}
 a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--orange);outline-offset:2px;}
-@media (max-width:900px){.layout{grid-template-columns:1fr;} .panel-form{max-height:none;} .grid2{grid-template-columns:1fr;}}
+.btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
+.btn-grid .btn-secondary{width:100%;display:block;text-align:center;box-sizing:border-box;padding:9px 8px;font-size:12px;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--grad);color:#fff;font-family:'Inter',sans-serif;font-weight:700;font-size:13px;padding:11px 20px;border-radius:22px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:100;box-shadow:0 8px 26px rgba(255,103,29,.4);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+fieldset.collapsed > *:not(legend){display:none;}
+fieldset > legend{cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:7px;}
+fieldset > legend::before{content:'▾';font-size:9px;color:var(--orange-2);transition:transform .2s;}
+fieldset.collapsed > legend::before{transform:rotate(-90deg);}
+@media (max-width:900px){.layout{grid-template-columns:1fr;} .panel-form{max-height:none;} .grid2{grid-template-columns:1fr;} .chart-box{height:240px;}}
+@media (max-width:520px){.btn-grid{grid-template-columns:1fr;} .cards{grid-template-columns:1fr 1fr;} header{flex-wrap:wrap;gap:10px;} .chart-box{height:220px;padding:8px;}}
 @media (prefers-reduced-motion:reduce){*{transition-duration:.001ms !important;animation-duration:.001ms !important;}}
 @media print{
   header,.panel-form,.scenario-switch,.tabs{display:none !important;}
@@ -97,7 +138,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,su
 <body>
 <header>
   <div class="brand">
-    <div class="dot"></div>
+    <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Grafana Labs</title><path fill="#FF671D" d="M23.02 10.59a8.578 8.578 0 0 0-.862-3.034 8.911 8.911 0 0 0-1.789-2.445c.337-1.342-.413-2.505-.413-2.505-1.292-.08-2.113.4-2.416.62-.052-.02-.102-.044-.154-.064-.22-.089-.446-.172-.677-.247-.231-.073-.47-.14-.711-.197a9.867 9.867 0 0 0-.875-.161C14.557.753 12.94 0 12.94 0c-1.804 1.145-2.147 2.744-2.147 2.744l-.018.093c-.098.029-.2.057-.298.088-.138.042-.275.094-.413.143-.138.055-.275.107-.41.166a8.869 8.869 0 0 0-1.557.87l-.063-.029c-2.497-.955-4.716.195-4.716.195-.203 2.658.996 4.33 1.235 4.636a11.608 11.608 0 0 0-.607 2.635C1.636 12.677.953 15.014.953 15.014c1.926 2.214 4.171 2.351 4.171 2.351.003-.002.006-.002.006-.005.285.509.615.994.986 1.446.156.19.32.371.488.548-.704 2.009.099 3.68.099 3.68 2.144.08 3.553-.937 3.849-1.173a9.784 9.784 0 0 0 3.164.501h.08l.055-.003.107-.002.103-.005.003.002c1.01 1.44 2.788 1.646 2.788 1.646 1.264-1.332 1.337-2.653 1.337-2.94v-.058c0-.02-.003-.039-.003-.06.265-.187.52-.387.758-.6a7.875 7.875 0 0 0 1.415-1.7c1.43.083 2.437-.885 2.437-.885-.236-1.49-1.085-2.216-1.264-2.354l-.018-.013-.016-.013a.217.217 0 0 1-.031-.02c.008-.092.016-.18.02-.27.011-.162.016-.323.016-.48v-.253l-.005-.098-.008-.135a1.891 1.891 0 0 0-.01-.13c-.003-.042-.008-.083-.013-.125l-.016-.124-.018-.122a6.215 6.215 0 0 0-2.032-3.73 6.015 6.015 0 0 0-3.222-1.46 6.292 6.292 0 0 0-.85-.048l-.107.002h-.063l-.044.003-.104.008a4.777 4.777 0 0 0-3.335 1.695c-.332.4-.592.84-.768 1.297a4.594 4.594 0 0 0-.312 1.817l.003.091c.005.055.007.11.013.164a3.615 3.615 0 0 0 .698 1.82 3.53 3.53 0 0 0 1.827 1.282c.33.098.66.14.971.137.039 0 .078 0 .114-.002l.063-.003c.02 0 .041-.003.062-.003.034-.002.065-.007.099-.01.007 0 .018-.003.028-.003l.031-.005.06-.008a1.18 1.18 0 0 0 .112-.02c.036-.008.072-.013.109-.024a2.634 2.634 0 0 0 .914-.415c.028-.02.056-.041.085-.065a.248.248 0 0 0 .039-.35.244.244 0 0 0-.309-.06l-.078.042c-.09.044-.184.083-.283.116a2.476 2.476 0 0 1-.475.096c-.028.003-.054.006-.083.006l-.083.002c-.026 0-.054 0-.08-.002l-.102-.006h-.012l-.024.006c-.016-.003-.031-.003-.044-.006-.031-.002-.06-.007-.091-.01a2.59 2.59 0 0 1-.724-.213 2.557 2.557 0 0 1-.667-.438 2.52 2.52 0 0 1-.805-1.475 2.306 2.306 0 0 1-.029-.444l.006-.122v-.023l.002-.031c.003-.021.003-.04.005-.06a3.163 3.163 0 0 1 1.352-2.29 3.12 3.12 0 0 1 .937-.43 2.946 2.946 0 0 1 .776-.101h.06l.07.002.045.003h.026l.07.005a4.041 4.041 0 0 1 1.635.49 3.94 3.94 0 0 1 1.602 1.662 3.77 3.77 0 0 1 .397 1.414l.005.076.003.075c.002.026.002.05.002.075 0 .024.003.052 0 .07v.065l-.002.073-.008.174a6.195 6.195 0 0 1-.08.639 5.1 5.1 0 0 1-.267.927 5.31 5.31 0 0 1-.624 1.13 5.052 5.052 0 0 1-3.237 2.014 4.82 4.82 0 0 1-.649.066l-.039.003h-.287a6.607 6.607 0 0 1-1.716-.265 6.776 6.776 0 0 1-3.4-2.274 6.75 6.75 0 0 1-.746-1.15 6.616 6.616 0 0 1-.714-2.596l-.005-.083-.002-.02v-.056l-.003-.073v-.096l-.003-.104v-.07l.003-.163c.008-.22.026-.45.054-.678a8.707 8.707 0 0 1 .28-1.355c.128-.444.286-.872.473-1.277a7.04 7.04 0 0 1 1.456-2.1 5.925 5.925 0 0 1 .953-.763c.169-.111.343-.213.524-.306.089-.05.182-.091.273-.135.047-.02.093-.042.138-.062a7.177 7.177 0 0 1 .714-.267l.145-.045c.049-.015.098-.026.148-.041.098-.029.197-.052.296-.076.049-.013.1-.02.15-.033l.15-.032.151-.028.076-.013.075-.01.153-.024c.057-.01.114-.013.171-.023l.169-.021c.036-.003.073-.008.106-.01l.073-.008.036-.003.042-.002c.057-.003.114-.008.171-.01l.086-.006h.023l.037-.003.145-.007a7.999 7.999 0 0 1 1.708.125 7.917 7.917 0 0 1 2.048.68 8.253 8.253 0 0 1 1.672 1.09l.09.077.089.078c.06.052.114.107.171.159.057.052.112.106.166.16.052.055.107.107.159.164a8.671 8.671 0 0 1 1.41 1.978c.012.026.028.052.04.078l.04.078.075.156c.023.051.05.1.07.153l.065.15a8.848 8.848 0 0 1 .45 1.34.19.19 0 0 0 .201.142.186.186 0 0 0 .172-.184c.01-.246.002-.532-.024-.856z"/></svg></div>
     <div>
       <h1 style="margin:0;" data-i18n="brandTitle">Simulateur Business Case Partenaire</h1>
       <div class="sub" data-i18n="brandSub">Grafana Labs — Go-To-Market &amp; valorisation des services</div>
@@ -236,13 +277,20 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,su
         <div><label data-i18n="lblGrowthReal">Croissance annuelle — Réaliste (%)</label><input type="number" id="growthRealistic" value="18"></div>
       </div>
       <label data-i18n="lblGrowthAmb">Croissance annuelle — Ambitieux (%)</label><input type="number" id="growthAmbitious" value="30">
+      <label data-i18n="lblDiscountRate">Taux d'actualisation (%) — pour la VAN / NPV</label><input type="number" id="discountRate" value="12">
+      <label class="pill" style="margin-top:10px;"><input type="checkbox" id="capacityConstrained"><span data-i18n="lblCapacity">Plafonner le revenu par la capacité delivery</span></label>
     </details>
 
     <button class="btn-primary" id="calcBtn" data-i18n="btnCalc">Calculer le Business Case</button>
-    <button class="btn-secondary" id="jsonBtn" style="width:100%;margin-top:8px;" data-i18n="btnJson">Exporter le JSON</button>
-    <label class="btn-secondary" for="loadJsonInput" style="width:100%;margin-top:8px;display:block;text-align:center;box-sizing:border-box;" data-i18n="btnLoad">Charger un cas (JSON)</label>
+    <div class="btn-grid">
+      <button class="btn-secondary" id="shareBtn" data-i18n="btnShare">Copier le lien</button>
+      <button class="btn-secondary" id="printBtn" data-i18n="btnPrint">Imprimer / PDF</button>
+      <button class="btn-secondary" id="jsonBtn" data-i18n="btnJson">Exporter JSON</button>
+      <button class="btn-secondary" id="csvBtn" data-i18n="btnCsv">Exporter CSV</button>
+      <label class="btn-secondary" for="loadJsonInput" data-i18n="btnLoad">Charger JSON</label>
+      <button class="btn-secondary" id="resetBtn" data-i18n="btnReset">Réinitialiser</button>
+    </div>
     <input type="file" id="loadJsonInput" accept="application/json" style="display:none">
-    <button class="btn-secondary" id="printBtn" style="width:100%;margin-top:8px;" data-i18n="btnPrint">Imprimer la synthèse</button>
   </div>
 
   <div class="panel-results">
@@ -309,7 +357,10 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,su
       <div class="chart-box"><canvas id="chartServicesBreakdown"></canvas></div>
       <h4 data-i18n="bcSensH4">Sensibilité au ratio Services : Licence</h4>
       <div class="note" data-i18n="bcSensNote">C'est l'hypothèse la plus déterminante du modèle : elle fixe directement le poids relatif des licences dans le chiffre d'affaires total généré.</div>
-      <div class="chart-box"><canvas id="chartSensitivity"></canvas></div>
+      <div class="chart-box"><canvas id="chartSensitivity" role="img"></canvas></div>
+      <h4 data-i18n="bcTornadoH4">Analyse tornado — impact des leviers sur le CA (±20%)</h4>
+      <div class="note" data-i18n="bcTornadoNote">Amplitude du chiffre d'affaires généré quand chaque levier varie de -20% à +20%, toutes choses égales par ailleurs. Les leviers sont classés du plus au moins déterminant.</div>
+      <div class="chart-box"><canvas id="chartTornado" role="img"></canvas></div>
     </div>
 
     <div class="tab-panel" id="tab-roi" role="tabpanel">
@@ -412,9 +463,25 @@ const STR = {
   lblGrowthReal:{fr:"Croissance annuelle — Réaliste (%)", en:"Annual growth — Realistic (%)"},
   lblGrowthAmb:{fr:"Croissance annuelle — Ambitieux (%)", en:"Annual growth — Ambitious (%)"},
   btnCalc:{fr:"Calculer le Business Case", en:"Compute Business Case"},
-  btnJson:{fr:"Exporter le JSON", en:"Export JSON"},
-  btnLoad:{fr:"Charger un cas (JSON)", en:"Load a case (JSON)"},
-  btnPrint:{fr:"Imprimer la synthèse", en:"Print the summary"},
+  btnJson:{fr:"Exporter JSON", en:"Export JSON"},
+  btnLoad:{fr:"Charger JSON", en:"Load JSON"},
+  btnPrint:{fr:"Imprimer / PDF", en:"Print / PDF"},
+  btnShare:{fr:"Copier le lien", en:"Copy link"},
+  btnCsv:{fr:"Exporter CSV", en:"Export CSV"},
+  btnReset:{fr:"Réinitialiser", en:"Reset"},
+  lblDiscountRate:{fr:"Taux d'actualisation (%) — pour la VAN / NPV", en:"Discount rate (%) — for NPV"},
+  lblCapacity:{fr:"Plafonner le revenu par la capacité delivery", en:"Cap revenue by delivery capacity"},
+  bcTornadoH4:{fr:"Analyse tornado — impact des leviers sur le CA (±20%)", en:"Tornado analysis — driver impact on revenue (±20%)"},
+  bcTornadoNote:{fr:"Amplitude du chiffre d'affaires généré quand chaque levier varie de -20% à +20%, toutes choses égales par ailleurs. Les leviers sont classés du plus au moins déterminant.", en:"Swing in generated revenue when each driver moves from -20% to +20%, all else equal. Drivers are ranked from most to least decisive."},
+  shareCopied:{fr:"Lien copié dans le presse-papiers", en:"Link copied to clipboard"},
+  shareFailed:{fr:"Copie impossible — copiez l'URL manuellement", en:"Copy failed — copy the URL manually"},
+  confirmReset:{fr:"Réinitialiser toutes les hypothèses aux valeurs par défaut ?", en:"Reset all assumptions to default values?"},
+  drvConversion:{fr:"Taux de conversion", en:"Conversion rate"}, drvTJM:{fr:"TJM moyen", en:"Avg. daily rate"},
+  drvDays:{fr:"Jours / projet", en:"Days / project"}, drvRatio:{fr:"Ratio Services:Licence", en:"Services:License ratio"},
+  drvProjects:{fr:"Projets / client", en:"Projects / client"}, drvTargeted:{fr:"Clients ciblés", en:"Targeted clients"},
+  npvCard:{fr:"VAN (NPV) 5 ans", en:"NPV (5-year)"}, paybackHorizon:{fr:"> 5 ans", en:"> 5 years"},
+  capacityRow:{fr:"Facteur de capacité delivery appliqué", en:"Applied delivery capacity factor"},
+  chartAria:{fr:(name,val)=>name+" : "+val, en:(name,val)=>name+": "+val},
   scnActiveLabel:{fr:"Scénario actif :", en:"Active scenario:"},
   scn_conservative:{fr:"Conservateur", en:"Conservative"}, scn_realistic:{fr:"Réaliste", en:"Realistic"}, scn_ambitious:{fr:"Ambitieux", en:"Ambitious"},
   tabSummary:{fr:"Résumé exécutif", en:"Executive summary"}, tabHyp:{fr:"Hypothèses", en:"Assumptions"},
@@ -459,6 +526,32 @@ function applyStaticI18n(){
   });
   updateProjectValueOut();
   updateWeightTotal();
+  applyHelpTooltips();
+}
+const HELP = {
+  servicesToLicenseRatio:{fr:"Hypothèse la plus déterminante. Pour un partenaire services, un ratio de 3:1 à 5:1 est courant : la licence Grafana est un point d'entrée qui tire l'implémentation, le managed et l'advisory.", en:"The most decisive assumption. For a services partner, a 3:1 to 5:1 ratio is common: the Grafana license is an entry point that pulls implementation, managed and advisory."},
+  avgDailyRate:{fr:"TJM services observability/SRE en Europe : typiquement 800–1200 € selon la séniorité et le pays. Ajuster à votre grille.", en:"Observability/SRE services day rate in Europe: typically €800–1200 depending on seniority and country. Adjust to your rate card."},
+  serviceDaysPerProject:{fr:"Charge moyenne d'un projet d'implémentation Grafana : 30–60 jours selon le périmètre (dashboards, alerting, migration, OTel).", en:"Average effort of a Grafana implementation project: 30–60 days depending on scope (dashboards, alerting, migration, OTel)."},
+  conversionRate:{fr:"Part des clients ciblés effectivement convertis en projet. 25–40% est réaliste sur une base installée qualifiée.", en:"Share of targeted clients actually converted into a project. 25–40% is realistic on a qualified installed base."},
+  marginRate:{fr:"Marge brute des services professionnels. 30–40% est typique pour une practice mature.", en:"Gross margin on professional services. 30–40% is typical for a mature practice."},
+  discountRate:{fr:"Taux d'actualisation pour la VAN. 10–15% reflète le coût du capital d'une ESN / cabinet de conseil.", en:"Discount rate for NPV. 10–15% reflects the cost of capital for a services firm / consultancy."},
+  workingDaysPerYear:{fr:"Jours facturables par consultant et par an, hors congés, formation et avant-vente. 160–190 est réaliste.", en:"Billable days per consultant per year, excluding leave, training and pre-sales. 160–190 is realistic."},
+};
+function applyHelpTooltips(){
+  Object.entries(HELP).forEach(([id,txt])=>{
+    const input=document.getElementById(id); if(!input) return;
+    let label=input.previousElementSibling;
+    if(!(label && label.tagName==='LABEL')){
+      const box=input.closest('.stl-slider');
+      label=(box && box.previousElementSibling && box.previousElementSibling.tagName==='LABEL') ? box.previousElementSibling : null;
+    }
+    const target=label||input;
+    target.setAttribute('title', tx(txt));
+    if(target.tagName==='LABEL' && !target.querySelector('.help-mark')){
+      const s=document.createElement('span'); s.className='help-mark'; s.textContent=' ⓘ'; s.style.color='var(--text-2)'; s.style.cursor='help';
+      target.appendChild(s);
+    }
+  });
 }
 function setLang(l){
   lang = l;
@@ -538,6 +631,8 @@ function readInputs(){
     bucketWeights: { ps:num('psWeight'), managed:num('managedWeight'), advisory:num('advisoryWeight'), training:num('trainingWeight') },
     supportAsPctOfLicense: num('supportAsPctOfLicense'), workingDaysPerYear: Math.max(1, num('workingDaysPerYear')),
     licenseMarginPct: num('licenseMarginPct'), investment: num('investment'), opexRatio: num('opexRatio'),
+    discountRate: num('discountRate'),
+    capacityConstrained: document.getElementById('capacityConstrained').checked,
     growth: { conservative: num('growthConservative'), realistic: num('growthRealistic'), ambitious: num('growthAmbitious') },
     selectedServices,
   };
@@ -562,8 +657,19 @@ function computeModel(inputs, scenarioKey){
 
   const convertedClients = Math.max(0, inputs.targetedClients * (inputs.conversionRate/100) * scn.conversionMult);
   const projectsPerClient = inputs.avgProjectsPerClient * scn.projectsMult;
-  const totalProjects = convertedClients * projectsPerClient;
-  const totalServiceDays = totalProjects * inputs.serviceDaysPerProject;
+  const demandProjects = convertedClients * projectsPerClient;
+  const demandServiceDays = demandProjects * inputs.serviceDaysPerProject;
+
+  // Delivery capacity: optionally cap delivered revenue by available consultant days.
+  const availableConsultants = inputs.nbConsultants + inputs.nbArchitects + inputs.nbEngineers;
+  const capacityDays = availableConsultants * inputs.workingDaysPerYear;
+  const requiredConsultants = demandServiceDays / inputs.workingDaysPerYear;
+  const capacityFactor = (inputs.capacityConstrained && demandServiceDays > capacityDays && demandServiceDays > 0)
+    ? capacityDays / demandServiceDays : 1;
+  const capacityLimited = capacityFactor < 1;
+
+  const totalProjects = demandProjects * capacityFactor;
+  const totalServiceDays = demandServiceDays * capacityFactor;
   const grossServicesRevenue = totalProjects * inputs.projectValue;
 
   const weights = computeBucketWeights(inputs.selectedServices, inputs.bucketWeights);
@@ -586,13 +692,10 @@ function computeModel(inputs, scenarioKey){
   const recurringRevenue = revManaged + revSupport + revAdvisory*(inputs.recurringServicesPct/100);
   const nonRecurringRevenue = totalRevenue - recurringRevenue;
 
-  const requiredConsultants = totalServiceDays / inputs.workingDaysPerYear;
-  const availableConsultants = inputs.nbConsultants + inputs.nbArchitects + inputs.nbEngineers;
   const utilization = availableConsultants>0 ? (requiredConsultants/availableConsultants)*100 : 0;
 
   const investment = inputs.investment;
   const roi = investment>0 ? ((grossMarginEUR - investment)/investment)*100 : null;
-  const paybackMonths = grossMarginEUR>0 ? (investment/(grossMarginEUR/12)) : null;
 
   const years = [1,2,3,4,5].map(y=>{
     const revenue = totalRevenue*Math.pow(1+growth, y-1);
@@ -602,6 +705,16 @@ function computeModel(inputs, scenarioKey){
   const cum = n => years.slice(0,n).reduce((acc,y)=>({revenue:acc.revenue+y.revenue, profit:acc.profit+y.profit}),{revenue:0,profit:0});
   const value1y = cum(1), value3y = cum(3), value5y = cum(5);
   const cagr = years[0].revenue>0 ? (Math.pow(years[4].revenue/years[0].revenue, 1/4)-1)*100 : 0;
+
+  // Payback derived from cumulative net cash flow (consistent with the ROI timeline).
+  let cumu = -investment, paybackYears = null;
+  for (const y of years){ const prev = cumu; cumu += y.profit; if (prev < 0 && cumu >= 0){ paybackYears = (y.year-1) + (-prev)/(cumu-prev); break; } }
+  const paybackMonths = paybackYears!==null ? paybackYears*12 : null;
+
+  // Discounted cash flow: NPV of gross profit over 5 years, net of investment.
+  const r = Math.max(0, inputs.discountRate)/100;
+  const npv = years.reduce((acc,y)=> acc + y.profit/Math.pow(1+r, y.year), -investment);
+  const discountedValue5y = years.reduce((acc,y)=> acc + y.revenue/Math.pow(1+r, y.year), 0);
 
   const ratioServicesLicense = revLicense>0 ? grossServicesRevenue/revLicense : null;
   const ratioServicesLicenseInclSupport = revLicense>0 ? (grossServicesRevenue+revSupport)/revLicense : null;
@@ -624,8 +737,8 @@ function computeModel(inputs, scenarioKey){
     convertedClients, totalProjects, totalServiceDays, grossServicesRevenue,
     revPS, revManaged, revAdvisory, revTraining, revLicense, revSupport, totalRevenue,
     grossMarginEUR, grossMarginPct, recurringRevenue, nonRecurringRevenue,
-    requiredConsultants, availableConsultants, utilization,
-    investment, roi, paybackMonths, years, value1y, value3y, value5y, cagr,
+    requiredConsultants, availableConsultants, utilization, capacityFactor, capacityLimited,
+    investment, roi, paybackMonths, npv, discountedValue5y, discountRate: inputs.discountRate, years, value1y, value3y, value5y, cagr,
     ratioServicesLicense, ratioServicesLicenseInclSupport,
     revenuePerClient, clv, ebitdaAdd, weights,
     tamClients, tamValuePotential, tamTotalValue,
@@ -645,9 +758,9 @@ function upsertChart(id, config){
   const ctx = document.getElementById(id).getContext('2d');
   charts[id] = new Chart(ctx, config);
 }
-const COLORS = { orange:'#FF671D', blue:'#2970FF', green:'#04BC4C', yellow:'#FFED23', purple:'#D444F1', red:'#E24B4A', gray:'#5F5E5A' };
-Chart.defaults.color = '#AFAFAF';
-Chart.defaults.borderColor = '#3A3A3A';
+const COLORS = { orange:'#FF671D', blue:'#6E9BFF', green:'#3FD98A', yellow:'#F8D648', purple:'#D444F1', red:'#E0576B', gray:'#4A4D55' };
+Chart.defaults.color = '#9AA0A6';
+Chart.defaults.borderColor = 'rgba(255,255,255,.09)';
 Chart.defaults.font.family = "Inter, sans-serif";
 if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) Chart.defaults.animation = false;
 
@@ -759,7 +872,8 @@ function renderCalc(inputs, m){
     [tx({fr:'9. Marge brute (%)',en:'9. Gross margin (%)'}), fmtPct(m.grossMarginPct)],
     [tx({fr:'10. Profit brut (€)',en:'10. Gross profit (€)'}), fmtEUR(m.grossMarginEUR)],
     [tx({fr:'11. ROI (an 1)',en:'11. ROI (Y1)'}), m.roi!==null?fmtPct(m.roi):'—'],
-    [tx({fr:'12. Temps de retour sur investissement',en:'12. Payback period'}), m.paybackMonths!==null? m.paybackMonths.toFixed(1)+' '+t('uMonths'):'—'],
+    [tx({fr:'12. Temps de retour sur investissement',en:'12. Payback period'}), m.paybackMonths!==null? m.paybackMonths.toFixed(1)+' '+t('uMonths'):t('paybackHorizon')],
+    [tx({fr:'12b. VAN (NPV) 5 ans',en:'12b. NPV (5-year)'})+' @ '+fmtPct(m.discountRate), fmtEUR(m.npv)],
     [tx({fr:'13. Valeur à 1 an',en:'13. Value at 1 year'}), fmtEUR(m.value1y.revenue)],
     [tx({fr:'13. Valeur à 3 ans (cumulé)',en:'13. Value at 3 years (cumulative)'}), fmtEUR(m.value3y.revenue)],
     [tx({fr:'13. Valeur à 5 ans (cumulé)',en:'13. Value at 5 years (cumulative)'}), fmtEUR(m.value5y.revenue)],
@@ -767,7 +881,8 @@ function renderCalc(inputs, m){
     [tx({fr:'15. Customer Lifetime Value (CLV)',en:'15. Customer Lifetime Value (CLV)'}), fmtEUR(m.clv)],
     [tx({fr:'16. Valeur moyenne par client (an 1)',en:'16. Average value per client (Y1)'}), fmtEUR(m.revenuePerClient)],
     [tx({fr:'17. Consultants nécessaires',en:'17. Consultants required'}), fmtNum(m.requiredConsultants,1)+' ('+(EN?'available: ':'disponibles : ')+fmtNum(m.availableConsultants)+')'],
-    [tx({fr:'18. Utilisation des équipes',en:'18. Team utilization'}), fmtPct(m.utilization)],
+    [tx({fr:'18. Utilisation des équipes',en:'18. Team utilization'}), fmtPct(m.utilization)+(m.capacityLimited?' ('+(EN?'capped':'plafonné')+')':'')],
+    [t('capacityRow'), (m.capacityFactor*100).toFixed(0)+'%'],
     [tx({fr:'19. EBITDA additionnel estimé',en:'19. Estimated additional EBITDA'}), fmtEUR(m.ebitdaAdd)],
     [tx({fr:'20. Opportunité totale générée (5 ans)',en:'20. Total generated opportunity (5 years)'}), fmtEUR(m.value5y.revenue)],
     [tx({fr:'CAGR revenu (an 1 → an 5)',en:'Revenue CAGR (Y1 → Y5)'}), fmtPct(m.cagr)],
@@ -779,7 +894,7 @@ function renderCalc(inputs, m){
     type:'bar',
     data:{ labels:[tx({fr:'Consultants nécessaires',en:'Consultants required'}), tx({fr:'Consultants disponibles',en:'Consultants available'})],
       datasets:[{ label:tx({fr:'Consultants (ETP)',en:'Consultants (FTE)'}), data:[Math.round(m.requiredConsultants*10)/10, m.availableConsultants], backgroundColor:[COLORS.orange, COLORS.blue] }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, grid:{color:'#3A3A3A'} }, x:{ grid:{display:false} } } }
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, grid:{color:'rgba(255,255,255,.07)'} }, x:{ grid:{display:false} } } }
   });
 
   upsertChart('chartCagr', {
@@ -788,7 +903,7 @@ function renderCalc(inputs, m){
       datasets:[{ label:tx({fr:'Revenu (€)',en:'Revenue (€)'}), data:m.years.map(y=>Math.round(y.revenue)), backgroundColor:COLORS.purple }] },
     options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false },
       title:{ display:true, text:(EN?'Estimated CAGR: ':'CAGR estimé : ')+fmtPct(m.cagr), color:'#AFAFAF', font:{size:12} } },
-      scales:{ y:{ beginAtZero:true, grid:{color:'#3A3A3A'}, ticks:{ callback:v=>fmtEUR(v) } }, x:{ grid:{display:false} } } }
+      scales:{ y:{ beginAtZero:true, grid:{color:'rgba(255,255,255,.07)'}, ticks:{ callback:v=>fmtEUR(v) } }, x:{ grid:{display:false} } } }
   });
 }
 
@@ -820,7 +935,7 @@ function renderBusinessCase(inputs, m){
     type:'bar',
     data:{ labels, datasets:[{ label:'€', data:floating, backgroundColor:bg }] },
     options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
-      scales:{ y:{ beginAtZero:true, grid:{color:'#3A3A3A'}, ticks:{ callback:v=>fmtEUR(v) } }, x:{ grid:{display:false}, ticks:{ autoSkip:false, maxRotation:30 } } } }
+      scales:{ y:{ beginAtZero:true, grid:{color:'rgba(255,255,255,.07)'}, ticks:{ callback:v=>fmtEUR(v) } }, x:{ grid:{display:false}, ticks:{ autoSkip:false, maxRotation:30 } } } }
   });
 
   upsertChart('chartRevenueMix', {
@@ -836,10 +951,43 @@ function renderBusinessCase(inputs, m){
     data:{ labels:[t('cPS'),t('cManaged'),t('cAdvisory'),t('cTraining')],
       datasets:[{ label:'€', data:[m.revPS,m.revManaged,m.revAdvisory,m.revTraining], backgroundColor:[COLORS.orange,COLORS.blue,COLORS.purple,COLORS.green] }] },
     options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
-      scales:{ x:{ beginAtZero:true, grid:{color:'#3A3A3A'}, ticks:{ callback:v=>fmtEUR(v) } }, y:{ grid:{display:false} } } }
+      scales:{ x:{ beginAtZero:true, grid:{color:'rgba(255,255,255,.07)'}, ticks:{ callback:v=>fmtEUR(v) } }, y:{ grid:{display:false} } } }
   });
 
   renderSensitivity(inputs);
+  renderTornado(inputs);
+}
+
+function revWith(inputs, overrides){
+  const merged = Object.assign({}, inputs, overrides);
+  merged.projectValue = merged.avgDailyRate * merged.serviceDaysPerProject;
+  return computeModel(merged, activeScenario).totalRevenue;
+}
+function renderTornado(inputs){
+  const drivers = [
+    {key:'drvConversion', field:'conversionRate'},
+    {key:'drvTJM', field:'avgDailyRate'},
+    {key:'drvDays', field:'serviceDaysPerProject'},
+    {key:'drvRatio', field:'servicesToLicenseRatio'},
+    {key:'drvProjects', field:'avgProjectsPerClient'},
+    {key:'drvTargeted', field:'targetedClients'},
+  ].map(d=>{
+    const low = revWith(inputs, {[d.field]: inputs[d.field]*0.8});
+    const high = revWith(inputs, {[d.field]: inputs[d.field]*1.2});
+    const lo = Math.min(low,high), hi = Math.max(low,high);
+    return { label:t(d.key), lo, hi, swing:hi-lo };
+  }).sort((a,b)=>b.swing-a.swing);
+
+  upsertChart('chartTornado', {
+    type:'bar',
+    data:{ labels: drivers.map(d=>d.label),
+      datasets:[{ label:tx({fr:'CA généré (min → max)',en:'Generated revenue (min → max)'}),
+        data: drivers.map(d=>[Math.round(d.lo), Math.round(d.hi)]),
+        backgroundColor:COLORS.orange, borderColor:COLORS.orange, borderWidth:1 }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false },
+      tooltip:{ callbacks:{ label:c=>{ const v=c.raw; return fmtEUR(v[0])+' → '+fmtEUR(v[1]); } } } },
+      scales:{ x:{ beginAtZero:false, grid:{color:'rgba(255,255,255,.07)'}, ticks:{ callback:v=>fmtEUR(v) } }, y:{ grid:{display:false} } } }
+  });
 }
 
 function renderSensitivity(inputs){
@@ -857,16 +1005,18 @@ function renderSensitivity(inputs){
         { label:tx({fr:'Revenu licences',en:'License revenue'}), data: rows.map(r=>Math.round(r.license)), borderColor:COLORS.blue, backgroundColor:'rgba(41,112,255,0.12)', tension:0.25, fill:true },
       ] },
     options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ color:'#AFAFAF' } } },
-      scales:{ y:{ grid:{color:'#3A3A3A'}, ticks:{ callback:v=>fmtEUR(v) } }, x:{ grid:{display:false} } } }
+      scales:{ y:{ grid:{color:'rgba(255,255,255,.07)'}, ticks:{ callback:v=>fmtEUR(v) } }, x:{ grid:{display:false} } } }
   });
 }
 
 function renderRoi(m){
   const EN = lang==='en';
+  const paybackVal = m.paybackMonths!==null ? m.paybackMonths.toFixed(1)+' '+t('uMonths') : t('paybackHorizon');
   const cards = [
     {lbl:tx({fr:'Investissement',en:'Investment'}), val:fmtEUR(m.investment)},
     {lbl:tx({fr:'ROI an 1',en:'ROI Y1'}), val: m.roi!==null? fmtPct(m.roi):'—', cls:'orange'},
-    {lbl:tx({fr:'Payback',en:'Payback'}), val: m.paybackMonths!==null? m.paybackMonths.toFixed(1)+' '+t('uMonths'):'—', cls:'blue'},
+    {lbl:tx({fr:'Payback',en:'Payback'}), val: paybackVal, cls:'blue'},
+    {lbl:t('npvCard')+' @ '+fmtPct(m.discountRate), val:fmtEUR(m.npv), cls: m.npv>=0?'green':'orange'},
     {lbl:tx({fr:'EBITDA additionnel estimé',en:'Estimated additional EBITDA'}), val:fmtEUR(m.ebitdaAdd), cls:'green'},
   ];
   document.getElementById('roiCards').innerHTML = cards.map(c=>`<div class="card"><div class="lbl">${c.lbl}</div><div class="val ${c.cls||''}">${c.val}</div></div>`).join('');
@@ -884,7 +1034,7 @@ function renderRoi(m){
         { label:tx({fr:'Seuil de rentabilité',en:'Break-even'}), data: timeline.map(()=>0), borderColor:COLORS.gray, borderDash:[6,4], pointRadius:0 },
       ] },
     options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ color:'#AFAFAF' } } },
-      scales:{ y:{ grid:{color:'#3A3A3A'}, ticks:{ callback:v=>fmtEUR(v) } }, x:{ grid:{display:false} } } }
+      scales:{ y:{ grid:{color:'rgba(255,255,255,.07)'}, ticks:{ callback:v=>fmtEUR(v) } }, x:{ grid:{display:false} } } }
   });
 
   const cashflow = m.years.map((y,i)=> i===0 ? y.profit - m.investment : y.profit);
@@ -893,7 +1043,7 @@ function renderRoi(m){
     data:{ labels: m.years.map(y=>t('yearN', y.year)),
       datasets:[{ label:tx({fr:'Cash flow net (€)',en:'Net cash flow (€)'}), data: cashflow.map(v=>Math.round(v)), backgroundColor: cashflow.map(v=> v>=0? COLORS.green: COLORS.red) }] },
     options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
-      scales:{ y:{ grid:{color:'#3A3A3A'}, ticks:{ callback:v=>fmtEUR(v) } }, x:{ grid:{display:false} } } }
+      scales:{ y:{ grid:{color:'rgba(255,255,255,.07)'}, ticks:{ callback:v=>fmtEUR(v) } }, x:{ grid:{display:false} } } }
   });
 }
 
@@ -919,7 +1069,7 @@ function renderScenarios(all){
         { label:tx({fr:'Profit brut an 1',en:'Gross profit Y1'}), data: order.map(k=>Math.round(all[k].grossMarginEUR)), backgroundColor:COLORS.orange },
       ] },
     options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ color:'#AFAFAF' } } },
-      scales:{ y:{ grid:{color:'#3A3A3A'}, ticks:{ callback:v=>fmtEUR(v) } }, x:{ grid:{display:false} } } }
+      scales:{ y:{ grid:{color:'rgba(255,255,255,.07)'}, ticks:{ callback:v=>fmtEUR(v) } }, x:{ grid:{display:false} } } }
   });
 }
 
@@ -1018,7 +1168,8 @@ function renderJson(inputs, all){
     advancedAssumptions: {
       bucketWeights: inputs.bucketWeights, supportAsPctOfLicense: inputs.supportAsPctOfLicense,
       workingDaysPerYear: inputs.workingDaysPerYear, licenseMarginPct: inputs.licenseMarginPct,
-      investment: inputs.investment, opexRatio: inputs.opexRatio, growth: inputs.growth,
+      investment: inputs.investment, opexRatio: inputs.opexRatio, discountRate: inputs.discountRate,
+      capacityConstrained: inputs.capacityConstrained, growth: inputs.growth,
     },
     servicesOffered: inputs.selectedServices,
     activeScenario,
@@ -1048,6 +1199,8 @@ function populateFormFromPayload(payload, silent){
     setVal('psWeight', bw.ps); setVal('managedWeight', bw.managed); setVal('advisoryWeight', bw.advisory); setVal('trainingWeight', bw.training);
     setVal('supportAsPctOfLicense', adv.supportAsPctOfLicense); setVal('workingDaysPerYear', adv.workingDaysPerYear);
     setVal('licenseMarginPct', adv.licenseMarginPct); setVal('investment', adv.investment); setVal('opexRatio', adv.opexRatio);
+    setVal('discountRate', adv.discountRate);
+    if (adv.capacityConstrained!==undefined) document.getElementById('capacityConstrained').checked = !!adv.capacityConstrained;
     if (adv.growth){ setVal('growthConservative', adv.growth.conservative); setVal('growthRealistic', adv.growth.realistic); setVal('growthAmbitious', adv.growth.ambitious); }
     document.querySelectorAll('.svc').forEach(el=> el.checked=false);
     (payload.servicesOffered||[]).forEach(s=>{ const el=document.querySelector('.svc[data-id="'+s.id+'"]'); if (el) el.checked=true; });
@@ -1069,11 +1222,22 @@ document.getElementById('loadJsonInput').addEventListener('change', function(e){
 });
 
 /* ============================== TABS / SCENARIOS / BUTTONS ============================== */
-function switchTab(tabId){
-  document.querySelectorAll('.tab-btn').forEach(b=>{ const on=b.dataset.tab===tabId; b.classList.toggle('active', on); b.setAttribute('aria-selected', on?'true':'false'); });
+const tabBtns = Array.from(document.querySelectorAll('.tab-btn'));
+function switchTab(tabId, focus){
+  tabBtns.forEach(b=>{ const on=b.dataset.tab===tabId; b.classList.toggle('active', on); b.setAttribute('aria-selected', on?'true':'false'); b.tabIndex = on?0:-1; if(on && focus) b.focus(); });
   document.querySelectorAll('.tab-panel').forEach(p=> p.classList.toggle('active', p.id==='tab-'+tabId));
 }
-document.querySelectorAll('.tab-btn').forEach(b=> b.addEventListener('click', ()=> switchTab(b.dataset.tab)));
+tabBtns.forEach((b,i)=>{
+  b.addEventListener('click', ()=> switchTab(b.dataset.tab));
+  b.addEventListener('keydown', e=>{
+    let ni=null;
+    if(e.key==='ArrowRight') ni=(i+1)%tabBtns.length;
+    else if(e.key==='ArrowLeft') ni=(i-1+tabBtns.length)%tabBtns.length;
+    else if(e.key==='Home') ni=0;
+    else if(e.key==='End') ni=tabBtns.length-1;
+    if(ni!==null){ e.preventDefault(); switchTab(tabBtns[ni].dataset.tab, true); }
+  });
+});
 
 document.querySelectorAll('.scenario-switch button').forEach(b=>{
   b.addEventListener('click', ()=>{
@@ -1096,19 +1260,138 @@ document.getElementById('jsonBtn').addEventListener('click', ()=>{
 });
 document.getElementById('printBtn').addEventListener('click', ()=>{ switchTab('summary'); setTimeout(()=>{ window.print(); }, 150); });
 
+/* CSV export of the detailed indicators across the three scenarios */
+function toCsvField(v){ const s=String(v==null?'':v); return /[",;\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
+document.getElementById('csvBtn').addEventListener('click', ()=>{
+  if(!lastResult) return;
+  const all = lastResult.all, EN = lang==='en';
+  const metrics = [
+    ['totalRevenue', tx({fr:'CA total généré (an 1)',en:'Total revenue (Y1)'}), m=>Math.round(m.totalRevenue)],
+    ['grossMarginEUR', tx({fr:'Profit brut (an 1)',en:'Gross profit (Y1)'}), m=>Math.round(m.grossMarginEUR)],
+    ['grossMarginPct', tx({fr:'Marge brute %',en:'Gross margin %'}), m=>m.grossMarginPct.toFixed(1)],
+    ['revLicense', tx({fr:'Revenus licences',en:'License revenue'}), m=>Math.round(m.revLicense)],
+    ['grossServicesRevenue', tx({fr:'Revenus services',en:'Services revenue'}), m=>Math.round(m.grossServicesRevenue)],
+    ['recurringRevenue', tx({fr:'Revenus récurrents',en:'Recurring revenue'}), m=>Math.round(m.recurringRevenue)],
+    ['ratioSL', tx({fr:'Ratio Services/Licences',en:'Services/License ratio'}), m=>m.ratioServicesLicense?m.ratioServicesLicense.toFixed(2):''],
+    ['roi', tx({fr:'ROI an 1 %',en:'ROI Y1 %'}), m=>m.roi!==null?m.roi.toFixed(1):''],
+    ['paybackMonths', tx({fr:'Payback (mois)',en:'Payback (months)'}), m=>m.paybackMonths!==null?m.paybackMonths.toFixed(1):''],
+    ['npv', tx({fr:'VAN (NPV) 5 ans',en:'NPV (5-year)'}), m=>Math.round(m.npv)],
+    ['value5y', tx({fr:'CA cumulé 5 ans',en:'Cumulative revenue 5y'}), m=>Math.round(m.value5y.revenue)],
+    ['clv', tx({fr:'CLV moyenne',en:'Average CLV'}), m=>Math.round(m.clv)],
+    ['utilization', tx({fr:'Utilisation équipes %',en:'Team utilization %'}), m=>m.utilization.toFixed(1)],
+  ];
+  const order=['conservative','realistic','ambitious'];
+  const sep=';';
+  let lines=[[tx({fr:'Indicateur',en:'Indicator'})].concat(order.map(k=>all[k].scenarioLabel)).map(toCsvField).join(sep)];
+  metrics.forEach(mt=> lines.push([mt[1]].concat(order.map(k=>mt[2](all[k]))).map(toCsvField).join(sep)) );
+  const csv='\uFEFF'+lines.join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='business_case_partenaire_grafana.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+});
+
+/* Shareable link: state encoded in the URL hash */
+function encodeState(payload){
+  const json=JSON.stringify(payload);
+  return btoa(unescape(encodeURIComponent(json))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function decodeState(s){
+  try{ const b=s.replace(/-/g,'+').replace(/_/g,'/'); return JSON.parse(decodeURIComponent(escape(atob(b)))); }catch(e){ return null; }
+}
+let toastTimer=null;
+function showToast(msg){
+  let el=document.getElementById('toast');
+  if(!el){ el=document.createElement('div'); el.id='toast'; el.className='toast'; document.body.appendChild(el); }
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'), 2600);
+}
+document.getElementById('shareBtn').addEventListener('click', async ()=>{
+  if(!lastResult) renderAll();
+  const payload = renderJson(lastResult.inputs, lastResult.all);
+  const url = location.origin+location.pathname+'#s='+encodeState(payload);
+  history.replaceState(null,'','#s='+encodeState(payload));
+  try{ await navigator.clipboard.writeText(url); showToast(t('shareCopied')); }
+  catch(e){ showToast(t('shareFailed')); window.prompt(t('shareCopied'), url); }
+});
+
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  if(!confirm(t('confirmReset'))) return;
+  try{ localStorage.removeItem('gpbc_state'); }catch(e){}
+  history.replaceState(null,'',location.pathname);
+  location.reload();
+});
+
+/* Input validation: constrain numeric fields and clamp on change */
+const CONSTRAINTS = {
+  companySize:[0,1e6,1], nbConsultants:[0,1e5,1], nbArchitects:[0,1e5,1], nbEngineers:[0,1e5,1], nbSales:[0,1e5,1],
+  nbActiveClients:[0,1e6,1], shareServices:[0,100,1], shareSoftware:[0,100,1], shareManaged:[0,100,1],
+  targetedClients:[0,1e5,1], conversionRate:[0,100,1], avgProjectsPerClient:[0,100,0.1],
+  avgDailyRate:[0,1e5,10], serviceDaysPerProject:[0,1000,1], marginRate:[0,100,1], recurringServicesPct:[0,100,1],
+  avgContractDurationMonths:[1,120,1], psWeight:[0,100,1], managedWeight:[0,100,1], advisoryWeight:[0,100,1], trainingWeight:[0,100,1],
+  supportAsPctOfLicense:[0,100,1], workingDaysPerYear:[1,260,1], licenseMarginPct:[0,100,1], investment:[0,1e8,1000],
+  opexRatio:[0,100,1], discountRate:[0,50,0.5], growthConservative:[-50,200,1], growthRealistic:[-50,200,1], growthAmbitious:[-50,200,1],
+};
+Object.entries(CONSTRAINTS).forEach(([id,[min,max,step]])=>{
+  const el=document.getElementById(id); if(!el) return;
+  el.min=min; el.max=max; el.step=step;
+  el.addEventListener('change', ()=>{
+    let v=parseFloat(el.value); if(isNaN(v)) return;
+    if(v<min) el.value=min; else if(v>max) el.value=max;
+  });
+});
+
 /* live recalc (debounced) so the model reacts as inputs change */
 let recalcTimer=null;
 document.querySelector('.panel-form').addEventListener('input', ()=>{ clearTimeout(recalcTimer); recalcTimer=setTimeout(renderAll, 300); });
 document.querySelector('.panel-form').addEventListener('change', ()=>{ clearTimeout(recalcTimer); recalcTimer=setTimeout(renderAll, 300); });
+
+/* collapsible fieldsets (helps on mobile) */
+document.querySelectorAll('.panel-form fieldset > legend').forEach(lg=>{
+  lg.setAttribute('tabindex','0');
+  lg.setAttribute('role','button');
+  const toggle=()=>lg.parentElement.classList.toggle('collapsed');
+  lg.addEventListener('click', toggle);
+  lg.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); } });
+});
+
+/* accessible descriptions for charts, refreshed on language switch */
+const CHART_ARIA = {
+  chartRevenueMixSummary:{fr:'Répartition licence vs services',en:'License vs services split'},
+  chartCapacity:{fr:'Consultants nécessaires vs disponibles',en:'Consultants required vs available'},
+  chartCagr:{fr:'Croissance du revenu sur 5 ans',en:'Revenue growth over 5 years'},
+  chartWaterfall:{fr:'Waterfall du revenu par ligne',en:'Revenue waterfall by line'},
+  chartRevenueMix:{fr:'Mix de revenu par ligne',en:'Revenue mix by line'},
+  chartServicesBreakdown:{fr:'Répartition des revenus de services',en:'Services revenue breakdown'},
+  chartSensitivity:{fr:'Sensibilité au ratio Services:Licence',en:'Sensitivity to Services:License ratio'},
+  chartTornado:{fr:'Analyse tornado des leviers',en:'Tornado analysis of drivers'},
+  chartRoiTimeline:{fr:'Profit cumulé net vs seuil de rentabilité',en:'Net cumulative profit vs break-even'},
+  chartCashFlow:{fr:'Cash flow net annuel',en:'Annual net cash flow'},
+  chartScenarios:{fr:'Comparaison des scénarios',en:'Scenario comparison'},
+};
+function refreshChartAria(){
+  Object.entries(CHART_ARIA).forEach(([id,label])=>{ const c=document.getElementById(id); if(c){ c.setAttribute('role','img'); c.setAttribute('aria-label', tx(label)); } });
+}
+const _renderAll = renderAll;
+renderAll = function(){ _renderAll(); refreshChartAria(); };
 
 /* ============================== INIT ============================== */
 (function init(){
   applyStaticI18n();
   let restored=false;
   try{
-    const raw = localStorage.getItem('gpbc_state');
-    if(raw){ populateFormFromPayload(JSON.parse(raw), true); restored=true; }
+    const h = location.hash;
+    if(h && h.indexOf('#s=')===0){
+      const payload = decodeState(h.slice(3));
+      if(payload){ populateFormFromPayload(payload, true); restored=true; }
+    }
   }catch(e){}
+  if(!restored){
+    try{
+      const raw = localStorage.getItem('gpbc_state');
+      if(raw){ populateFormFromPayload(JSON.parse(raw), true); restored=true; }
+    }catch(e){}
+  }
   if(!restored) renderAll();
 })();
 </script>
