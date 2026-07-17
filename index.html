@@ -221,6 +221,11 @@
   .schip button:hover{border-color:var(--blue);color:var(--blue);}
   .schip.applied{opacity:.55;}
 
+  /* language switch */
+  .langsw{display:flex;gap:2px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:2px;}
+  .langsw button{background:none;border:none;color:var(--muted);font-size:11px;font-weight:700;padding:5px 9px;border-radius:6px;cursor:pointer;font-family:inherit;}
+  .langsw button.on{background:var(--orange);color:#241300;}
+
   /* sparkline + compare */
   .spark{vertical-align:middle;}
   .cmp-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;}
@@ -249,19 +254,18 @@
     <span class="logo-chip"><img class="logo" src="assets/grafana-labs-logo.png" alt="Grafana Labs"></span>
     <div>
       <h1>Partner Assessment Engine</h1>
-      <div class="sub">Skill · Scale · Will · Strategic Fit — évaluation objective d'un partenaire Grafana Labs</div>
+      <div class="sub" id="subTitle"></div>
     </div>
   </div>
   <div class="header-right">
-    <div class="toolbtns">
-      <button class="iconbtn" onclick="newEvaluation()" title="Nouvelle évaluation">＋ Nouveau</button>
-      <button class="iconbtn" onclick="exportJSON()" title="Exporter en JSON">↧ Export JSON</button>
-      <button class="iconbtn" onclick="document.getElementById('importFile').click()" title="Importer un JSON">↥ Importer</button>
-      <button class="iconbtn" onclick="window.print()" title="Imprimer / PDF">⎙ PDF</button>
-      <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importJSON(event)">
+    <div class="toolbtns" id="toolbtns"></div>
+    <div class="langsw" id="langsw">
+      <button data-l="fr" onclick="setLang('fr')">FR</button>
+      <button data-l="en" onclick="setLang('en')">EN</button>
     </div>
-    <span id="saveIndic">Prêt</span>
+    <span id="saveIndic"></span>
     <div id="headerScore"></div>
+    <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importJSON(event)">
   </div>
 </header>
 
@@ -269,156 +273,333 @@
 
 <main id="main"></main>
 
-<footer>Prototype interne — scores calculés localement dans votre navigateur (aucune donnée envoyée). Sauvegarde automatique via localStorage. Export JSON pour backup/partage.</footer>
+<footer id="footer"></footer>
 
 <script>
+/* ============================== I18N ============================== */
+
+let lang = (function(){ try{ return localStorage.getItem('gpae_lang')||'fr'; }catch(e){ return 'fr'; } })();
+function setLang(l){ lang=l; try{ localStorage.setItem('gpae_lang', l); }catch(e){} document.documentElement.setAttribute('lang',l); render(); }
+function tx(v){ return (v && typeof v==='object' && !Array.isArray(v)) ? (v[lang]!=null?v[lang]:v.fr) : v; }
+function t(key, ...args){
+  const v = STR[key];
+  if(v==null) return key;
+  const val = (typeof v==='object' && !Array.isArray(v)) ? (v[lang]!=null?v[lang]:v.fr) : v;
+  return (typeof val==='function') ? val(...args) : val;
+}
+
+const STR = {
+  sub:{fr:"Skill · Scale · Will · Strategic Fit — évaluation objective d'un partenaire Grafana Labs", en:"Skill · Scale · Will · Strategic Fit — objective assessment of a Grafana Labs partner"},
+  footer:{fr:"Prototype interne — scores calculés localement dans votre navigateur (aucune donnée envoyée). Sauvegarde automatique via localStorage. Export JSON pour backup/partage.", en:"Internal prototype — scores computed locally in your browser (no data sent). Auto-saved via localStorage. JSON export for backup/sharing."},
+  tbNew:{fr:"＋ Nouveau", en:"＋ New"}, tbNewT:{fr:"Nouvelle évaluation", en:"New assessment"},
+  tbExport:{fr:"↧ Export JSON", en:"↧ Export JSON"}, tbExportT:{fr:"Exporter en JSON", en:"Export as JSON"},
+  tbImport:{fr:"↥ Importer", en:"↥ Import"}, tbImportT:{fr:"Importer un JSON", en:"Import a JSON"},
+  tbPdf:{fr:"⎙ PDF", en:"⎙ PDF"}, tbPdfT:{fr:"Imprimer / PDF", en:"Print / PDF"},
+  ready:{fr:"Prêt", en:"Ready"}, saved:{fr:"Sauvegardé ✓", en:"Saved ✓"}, saved2:{fr:"Sauvegardé", en:"Saved"},
+  provisional:{fr:"provisoire", en:"provisional"}, provScore:{fr:"score provisoire", en:"provisional score"},
+
+  // profile
+  profileTitle:{fr:"Profil du partenaire", en:"Partner profile"},
+  profileHint:{fr:"24 champs structurants. Les champs vides sont signalés comme information manquante et diminuent le score de confiance. Les champs <span style=\"color:var(--yellow)\">clés</span> pèsent sur la décision.", en:"24 structuring fields. Empty fields are flagged as missing information and lower the confidence score. <span style=\"color:var(--yellow)\">Key</span> fields weigh on the decision."},
+  pctComplete:{fr:"% complété", en:"% complete"}, keyTag:{fr:"clé", en:"key"},
+  continueAssess:{fr:"Continuer vers l'évaluation →", en:"Continue to assessment →"},
+
+  // assessment
+  weight:{fr:"poids", en:"weight"},
+  penaltiesTitle:{fr:"Pénalités / Red Flags", en:"Penalties / Red Flags"},
+  penaltiesHint:{fr:"Cochez uniquement les signaux confirmés par des faits. Score final jamais négatif ; le red flag « risque juridique » plafonne le score final à 15.", en:"Only check signals confirmed by facts. Final score is never negative; the \"legal risk\" red flag caps the final score at 15."},
+  suggestTitle:{fr:(n)=>`Suggestions basées sur le profil (${n})`, en:(n)=>`Profile-based suggestions (${n})`},
+  applyAll:{fr:"Tout appliquer", en:"Apply all"}, check:{fr:"Cocher", en:"Check"},
+  bonusTitle:{fr:"Bonus « Pépite »", en:"\"Nugget\" bonus"},
+  bonusHint:{fr:"Jusqu'à 10 points bonus, appliqués seulement si au moins deux signaux concrets sont cochés.", en:"Up to 10 bonus points, applied only if at least two concrete signals are checked."},
+  bonusApplied:{fr:(bt,n)=>`Bonus appliqué : <b style="color:var(--orange)">${bt} pts</b> (${n} signaux cochés)`, en:(bt,n)=>`Bonus applied: <b style="color:var(--orange)">${bt} pts</b> (${n} signals checked)`},
+  liveScore:{fr:"Score en direct", en:"Live score"},
+  bonusLab:{fr:"Bonus", en:"Bonus"}, penaltyLab:{fr:"Pénalités", en:"Penalties"},
+  seeDecision:{fr:"Voir la décision →", en:"See decision →"},
+  notePh:{fr:"Preuve, lien, certification, référence client…", en:"Proof, link, certification, customer reference…"},
+  noteIc:{fr:"preuve", en:"proof"},
+  sevFaible:{fr:"Faible", en:"Low"}, sevMoyen:{fr:"Moyen", en:"Medium"}, sevFort:{fr:"Fort", en:"High"},
+
+  // decision
+  overview:{fr:"Vue d'ensemble", en:"Overview"},
+  decRecommended:{fr:"Décision recommandée", en:"Recommended decision"},
+  priorityWord:{fr:"Priorité", en:"Priority"},
+  critFilled:{fr:(p)=>`${p}% des critères renseignés`, en:(p)=>`${p}% of criteria filled`},
+  provNote:{fr:"Score provisoire : moins de 50 % des critères sont renseignés. À traiter comme une hypothèse de travail, pas comme une décision ferme, tant que l'évaluation n'est pas complétée.", en:"Provisional score: fewer than 50% of criteria are filled. Treat as a working hypothesis, not a firm decision, until the assessment is completed."},
+  execTitle:{fr:"1. Executive Summary", en:"1. Executive Summary"},
+  execBody:{
+    fr:(pName,pType,country,final,cat,strong,weak,pen,verdict)=>`<b>${pName}</b> (${pType}${country?', '+country:''}) obtient <b>${final}/100</b>, dans la catégorie <b>${cat}</b>. Point fort principal : <b>${strong.k}</b> (${strong.v}/${strong.max}). Point le plus faible : <b>${weak.k}</b> (${weak.v}/${weak.max}) — première zone à faire progresser ou à challenger en meeting. ${pen? `${pen} red flag${pen>1?'s':''} identifié${pen>1?'s':''}, à clarifier avant tout investissement.` : `Aucun red flag coché — à confirmer par les faits, pas les déclarations.`} Décision : <b>${verdict}</b>.`,
+    en:(pName,pType,country,final,cat,strong,weak,pen,verdict)=>`<b>${pName}</b> (${pType}${country?', '+country:''}) scores <b>${final}/100</b>, in the <b>${cat}</b> category. Main strength: <b>${strong.k}</b> (${strong.v}/${strong.max}). Weakest area: <b>${weak.k}</b> (${weak.v}/${weak.max}) — the first area to improve or challenge in the meeting. ${pen? `${pen} red flag${pen>1?'s':''} identified, to clarify before any investment.` : `No red flag checked — to be confirmed by facts, not statements.`} Decision: <b>${verdict}</b>.`
+  },
+  scorecardTitle:{fr:"2. Scorecard", en:"2. Scorecard"},
+  thDimension:{fr:"Dimension", en:"Dimension"}, thScore:{fr:"Score", en:"Score"}, thMax:{fr:"Max", en:"Max"},
+  thProgress:{fr:"Progression", en:"Progress"}, thEvidence:{fr:"Niveau de preuve", en:"Evidence level"},
+  bonusRow:{fr:"Bonus Pépite", en:"Nugget bonus"}, signals:{fr:"signaux", en:"signals"},
+  finalScore:{fr:"Score final", en:"Final score"},
+  classifTitle:{fr:"3. Classification", en:"3. Classification"},
+  priorityLevel:{fr:"Niveau de priorité", en:"Priority level"},
+  recModelLabel:{fr:"Modèle de partenariat recommandé", en:"Recommended partnership model"},
+  tierPot:{fr:"Tier potentiel", en:"Potential tier"},
+  pipeHorizonLabel:{fr:"Horizon de génération de pipeline", en:"Pipeline generation horizon"},
+  confScoreLabel:{fr:"Score de confiance", en:"Confidence score"},
+  evConfirmed:{fr:"Confirmé", en:"Confirmed"}, evDeclared:{fr:"Déclaré", en:"Declared"}, evHypo:{fr:"Hypothèse / info manquante", en:"Hypothesis / missing info"},
+  confHigh:{fr:"Haute confiance", en:"High confidence"}, confMid:{fr:"Confiance moyenne", en:"Medium confidence"}, confLow:{fr:"Faible confiance", en:"Low confidence"},
+
+  oppsTitle:{fr:"4. Pourquoi ce partenaire pourrait gagner avec Grafana", en:"4. Why this partner could win with Grafana"},
+  oppClients:{fr:"Clients / segments", en:"Clients / segments"},
+  oppValueP:{fr:"Valeur partenaire", en:"Partner value"},
+  oppValueG:{fr:"Valeur Grafana", en:"Grafana value"},
+  oppProof:{fr:"Preuve disponible", en:"Available proof"},
+  oppNext:{fr:"Prochaine action", en:"Next action"},
+
+  risksTitle:{fr:"5. Risques et Red Flags", en:"5. Risks and Red Flags"},
+  noRedFlags:{fr:"Aucun red flag coché. Cela ne signifie pas absence de risque — vérifiez que les preuves (comptes nommés, sponsor, formation, pipeline partagé) sont documentées avant de conclure.", en:"No red flag checked. That does not mean no risk — make sure the proofs (named accounts, sponsor, training, shared pipeline) are documented before concluding."},
+  riskImpactL:{fr:"Impact potentiel", en:"Potential impact"},
+  riskQuestionL:{fr:"Question à poser", en:"Question to ask"},
+  riskMitigationL:{fr:"Mitigation", en:"Mitigation"},
+
+  justifTitle:{fr:"Preuves & justifications", en:"Evidence & justifications"},
+  justifHint:{fr:"Éléments de preuve saisis sur les critères de scoring — la base factuelle de l'évaluation.", en:"Evidence entered on the scoring criteria — the factual basis of the assessment."},
+  thPillar:{fr:"Pilier", en:"Pillar"}, thCriterion:{fr:"Critère", en:"Criterion"}, thProof:{fr:"Preuve / note", en:"Proof / note"},
+
+  savePortfolioBtn:{fr:"Enregistrer dans le portfolio", en:"Save to portfolio"},
+  prepMeetingBtn:{fr:"Préparer le prochain meeting →", en:"Prepare next meeting →"},
+  exportReportBtn:{fr:"Exporter le rapport (PDF)", en:"Export report (PDF)"},
+
+  // meeting
+  qTitle:{fr:"6. Dix questions à poser lors du prochain meeting", en:"6. Ten questions to ask in the next meeting"},
+  briefTitle:{fr:"7. Meeting Preparation Brief", en:"7. Meeting Preparation Brief"},
+  mObjective:{fr:"Objectif du meeting", en:"Meeting objective"},
+  mObjClose:{fr:"Valider s'il existe un deal concret qui justifie de poursuivre, sinon clore la relation.", en:"Validate whether a concrete deal justifies continuing, otherwise close the relationship."},
+  mObjImprove:{fr:(w)=>`Obtenir des preuves concrètes sur la dimension la plus faible (${w}) et sécuriser un engagement daté.`, en:(w)=>`Get concrete proof on the weakest dimension (${w}) and secure a dated commitment.`},
+  mMinResult:{fr:"Résultat minimum attendu", en:"Minimum expected outcome"},
+  mSponsorNeeded:{fr:"Nom d'un sponsor exécutif engagé.", en:"Name of an engaged executive sponsor."},
+  mNamedNeeded:{fr:"Trois comptes nommés avec contexte (budget, timeline).", en:"Three named accounts with context (budget, timeline)."},
+  mNamedConfirm:{fr:"Confirmation ou mise à jour des comptes nommés existants.", en:"Confirmation or update of existing named accounts."},
+  mDatedAction:{fr:"Une action datée avant la fin du meeting.", en:"A dated action before the end of the meeting."},
+  mStakeholders:{fr:"Interlocuteurs à influencer", en:"Stakeholders to influence"},
+  mStakeholdersEmpty:{fr:"Sponsor exécutif, champion commercial et champion technique — à identifier si absents.", en:"Executive sponsor, sales champion and technical champion — to identify if missing."},
+  mHypotheses:{fr:"Hypothèses à valider", en:"Hypotheses to validate"},
+  mHypoBody:{fr:(p)=>`Que ${p} peut réellement vendre et délivrer Grafana (Skill), qu'il va y investir du temps et du capital politique (Will), et qu'il a un accès réel à des comptes pertinents (Scale / Fit).`, en:(p)=>`That ${p} can truly sell and deliver Grafana (Skill), will invest time and political capital (Will), and has real access to relevant accounts (Scale / Fit).`},
+  mOffer:{fr:"Offre Grafana à positionner", en:"Grafana offer to position"},
+  mObjections:{fr:"Objections probables", en:"Likely objections"},
+  mCommit:{fr:"Engagement à obtenir", en:"Commitment to secure"},
+  mCommitBody:{fr:"Date précise pour la prochaine action, et si possible un compte nommé qualifié.", en:"A precise date for the next action, and if possible a qualified named account."},
+  seePlan:{fr:"Voir le plan d'activation →", en:"See activation plan →"},
+  copyBrief:{fr:"Copier le brief (Markdown)", en:"Copy brief (Markdown)"},
+  downloadMd:{fr:"Télécharger .md", en:"Download .md"},
+  copied:{fr:"Copié ✓", en:"Copied ✓"},
+
+  // plan
+  planTitle:{fr:"8. Plan d'activation", en:"8. Activation plan"},
+  planCategory:{fr:(c)=>`Catégorie : <b>${c}</b> — le plan est calibré en conséquence.`, en:(c)=>`Category: <b>${c}</b> — the plan is calibrated accordingly.`},
+  colAction:{fr:"Action", en:"Action"}, colOwner:{fr:"Owner", en:"Owner"}, colDue:{fr:"Échéance", en:"Due"}, colResult:{fr:"Résultat attendu", en:"Expected result"},
+  conditionsTitle:{fr:"9. Conditions de poursuite", en:"9. Conditions to continue"},
+  conditionsHint:{fr:(p)=>`Trois preuves que ${p} doit fournir pour justifier un investissement Grafana supplémentaire :`, en:(p)=>`Three proofs ${p} must provide to justify further Grafana investment:`},
+  verdictTitle:{fr:"10. Verdict final", en:"10. Final verdict"},
+  nextDecisionLabel:{fr:"Prochaine décision à prendre", en:"Next decision to make"},
+  reevalLabel:{fr:"Date de réévaluation recommandée", en:"Recommended re-assessment date"},
+  inDays:{fr:(d)=>`(dans ${d} jours)`, en:(d)=>`(in ${d} days)`},
+
+  // portfolio
+  pfTitle:{fr:"Portfolio des partenaires évalués", en:"Assessed partners portfolio"},
+  pfEmpty:{fr:"Aucun partenaire enregistré. Complétez une évaluation puis cliquez sur « Enregistrer dans le portfolio » à l'écran Décision.", en:"No partner saved. Complete an assessment then click \"Save to portfolio\" on the Decision screen."},
+  pfMatrixHint:{fr:"Matrice Potentiel (Skill + Scale + Fit, /70) × Volonté (Will, /30). Couleur = catégorie.", en:"Matrix Potential (Skill + Scale + Fit, /70) × Will (/30). Color = category."},
+  qLowPotHiWill:{fr:"Faible potentiel · Forte volonté", en:"Low potential · High will"},
+  qHiPotHiWill:{fr:"Fort potentiel · Forte volonté", en:"High potential · High will"},
+  qLowPotLoWill:{fr:"Faible potentiel · Faible volonté", en:"Low potential · Low will"},
+  qHiPotLoWill:{fr:"Fort potentiel · Faible volonté", en:"High potential · Low will"},
+  cmpTitle:{fr:"Comparaison (radar)", en:"Comparison (radar)"},
+  cmpHint:{fr:"Sélectionnez jusqu'à 3 partenaires pour superposer leurs profils Skill / Scale / Will / Fit.", en:"Select up to 3 partners to overlay their Skill / Scale / Will / Fit profiles."},
+  cmpEmpty:{fr:"Cochez au moins un partenaire pour afficher le radar.", en:"Check at least one partner to display the radar."},
+  listTitle:{fr:"Liste", en:"List"}, exportCsv:{fr:"↓ Export CSV", en:"↓ Export CSV"},
+  thPartner:{fr:"Partenaire", en:"Partner"}, thType:{fr:"Type", en:"Type"}, thTrend:{fr:"Tendance", en:"Trend"},
+  thCategory:{fr:"Catégorie", en:"Category"}, thSaved:{fr:"Enregistré", en:"Saved"},
+  openBtn:{fr:"Ouvrir", en:"Open"}, delBtn:{fr:"Suppr.", en:"Delete"},
+  oneVersion:{fr:"1 version", en:"1 version"},
+
+  // alerts / confirms
+  cNew:{fr:"Démarrer une nouvelle évaluation ? L'évaluation en cours sera effacée (pensez à l'enregistrer dans le portfolio ou à l'exporter avant).", en:"Start a new assessment? The current one will be cleared (consider saving it to the portfolio or exporting it first)."},
+  cImportInvalid:{fr:(m)=>"Fichier invalide : "+m, en:(m)=>"Invalid file: "+m},
+  cLoad:{fr:"Charger ce partenaire remplacera l'évaluation en cours. Continuer ?", en:"Loading this partner will replace the current assessment. Continue?"},
+  cDelete:{fr:"Supprimer ce partenaire du portfolio ?", en:"Delete this partner from the portfolio?"},
+  cSavedFirst:{fr:(v)=>`Partenaire enregistré (v${v}). Évaluation complète archivée et rechargeable.`, en:(v)=>`Partner saved (v${v}). Full assessment archived and reloadable.`},
+  cSavedDelta:{fr:(v,d)=>`Partenaire enregistré (v${v}). Évolution du score : ${d>=0?'+':''}${d} pt depuis la dernière sauvegarde.`, en:(v,d)=>`Partner saved (v${v}). Score change: ${d>=0?'+':''}${d} pt since last save.`},
+  cCopyFail:{fr:"Copie impossible — utilisez « Télécharger .md ».", en:"Copy failed — use \"Download .md\"."},
+  nameFallback:{fr:"ce partenaire", en:"this partner"},
+  nameFallbackCap:{fr:"Ce partenaire", en:"This partner"},
+  nameNotSet:{fr:"(nom non renseigné)", en:"(name not set)"},
+  typeNotSet:{fr:"type non renseigné", en:"type not set"},
+  partnerFallback:{fr:"le partenaire", en:"the partner"},
+};
+
 /* ============================== DATA MODEL ============================== */
 
 const SCREENS = [
-  {id:'profile', label:'Profil', n:1},
-  {id:'assessment', label:'Évaluation', n:2},
-  {id:'decision', label:'Décision', n:3},
-  {id:'meeting', label:'Prép. Meeting', n:4},
-  {id:'plan', label:"Plan d'activation", n:5},
-  {id:'portfolio', label:'Portfolio', n:6},
+  {id:'profile', label:{fr:'Profil',en:'Profile'}, n:1},
+  {id:'assessment', label:{fr:'Évaluation',en:'Assessment'}, n:2},
+  {id:'decision', label:{fr:'Décision',en:'Decision'}, n:3},
+  {id:'meeting', label:{fr:'Prép. Meeting',en:'Meeting Prep'}, n:4},
+  {id:'plan', label:{fr:"Plan d'activation",en:'Activation Plan'}, n:5},
+  {id:'portfolio', label:{fr:'Portfolio',en:'Portfolio'}, n:6},
 ];
 
 const PROFILE_FIELDS = [
-  {k:'partnerName', l:'Nom du partenaire', t:'text', req:true},
-  {k:'country', l:'Pays / zones couvertes', t:'text'},
-  {k:'partnerType', l:'Type de partenaire', t:'select', opts:['System Integrator','Reseller','MSP','MSSP','Cloud Service Provider','Consulting Partner','Technology Partner','OEM','Referral Partner','Distributor']},
-  {k:'employees', l:'Nombre d\'employés', t:'text'},
-  {k:'revenue', l:'Chiffre d\'affaires estimé', t:'text'},
-  {k:'sectors', l:'Secteurs couverts', t:'text'},
-  {k:'enterpriseAccess', l:'Accès comptes Enterprise / Mid-Market (exemples)', t:'textarea'},
-  {k:'dominantMotion', l:'Motion commerciale dominante', t:'select', opts:['Resale','Referral','Services','Managed services','Cloud marketplace','Co-sell']},
-  {k:'competitors', l:'Concurrents actuellement vendus', t:'checklist', opts:['Datadog','Dynatrace','Splunk','Elastic','New Relic','AppDynamics','Open-source only','Autres']},
-  {k:'execSponsor', l:'Sponsor exécutif (nom + niveau d\'engagement)', t:'text', req:true},
-  {k:'salesChampion', l:'Champion commercial', t:'text'},
-  {k:'techChampion', l:'Champion technique', t:'text'},
-  {k:'salesDedicated', l:'Ressources commerciales dédiées (nb personnes)', t:'text'},
-  {k:'techDedicated', l:'Ressources techniques dédiées (nb personnes)', t:'text'},
-  {k:'peopleToTrain', l:'Nombre de personnes à certifier', t:'text'},
-  {k:'namedAccount1', l:'Compte nommé #1', t:'text', req:true},
-  {k:'namedAccount2', l:'Compte nommé #2', t:'text'},
-  {k:'namedAccount3', l:'Compte nommé #3', t:'text'},
-  {k:'existingOpps', l:'Opportunités existantes', t:'textarea'},
-  {k:'pipelineTarget', l:'Objectif de pipeline sur 12 mois', t:'text'},
-  {k:'actionSinceLast', l:'Action déjà exécutée depuis le dernier échange', t:'textarea'},
-  {k:'nextAction', l:'Prochaine action', t:'text'},
-  {k:'nextActionDate', l:'Date de la prochaine action', t:'date'},
-  {k:'meetingNotes', l:'Notes qualitatives / compte rendu du dernier meeting', t:'textarea'},
+  {k:'partnerName', l:{fr:'Nom du partenaire',en:'Partner name'}, t:'text', req:true},
+  {k:'country', l:{fr:'Pays / zones couvertes',en:'Country / regions covered'}, t:'text'},
+  {k:'partnerType', l:{fr:'Type de partenaire',en:'Partner type'}, t:'select', opts:['System Integrator','Reseller','MSP','MSSP','Cloud Service Provider','Consulting Partner','Technology Partner','OEM','Referral Partner','Distributor']},
+  {k:'employees', l:{fr:"Nombre d'employés",en:'Number of employees'}, t:'text'},
+  {k:'revenue', l:{fr:"Chiffre d'affaires estimé",en:'Estimated revenue'}, t:'text'},
+  {k:'sectors', l:{fr:'Secteurs couverts',en:'Sectors covered'}, t:'text'},
+  {k:'enterpriseAccess', l:{fr:'Accès comptes Enterprise / Mid-Market (exemples)',en:'Enterprise / Mid-Market account access (examples)'}, t:'textarea'},
+  {k:'dominantMotion', l:{fr:'Motion commerciale dominante',en:'Dominant sales motion'}, t:'select', opts:['Resale','Referral','Services','Managed services','Cloud marketplace','Co-sell']},
+  {k:'competitors', l:{fr:'Concurrents actuellement vendus',en:'Competitors currently sold'}, t:'checklist', opts:['Datadog','Dynatrace','Splunk','Elastic','New Relic','AppDynamics','Open-source only','Autres']},
+  {k:'execSponsor', l:{fr:"Sponsor exécutif (nom + niveau d'engagement)",en:'Executive sponsor (name + engagement level)'}, t:'text', req:true},
+  {k:'salesChampion', l:{fr:'Champion commercial',en:'Sales champion'}, t:'text'},
+  {k:'techChampion', l:{fr:'Champion technique',en:'Technical champion'}, t:'text'},
+  {k:'salesDedicated', l:{fr:'Ressources commerciales dédiées (nb personnes)',en:'Dedicated sales resources (headcount)'}, t:'text'},
+  {k:'techDedicated', l:{fr:'Ressources techniques dédiées (nb personnes)',en:'Dedicated technical resources (headcount)'}, t:'text'},
+  {k:'peopleToTrain', l:{fr:'Nombre de personnes à certifier',en:'Number of people to certify'}, t:'text'},
+  {k:'namedAccount1', l:{fr:'Compte nommé #1',en:'Named account #1'}, t:'text', req:true},
+  {k:'namedAccount2', l:{fr:'Compte nommé #2',en:'Named account #2'}, t:'text'},
+  {k:'namedAccount3', l:{fr:'Compte nommé #3',en:'Named account #3'}, t:'text'},
+  {k:'existingOpps', l:{fr:'Opportunités existantes',en:'Existing opportunities'}, t:'textarea'},
+  {k:'pipelineTarget', l:{fr:'Objectif de pipeline sur 12 mois',en:'12-month pipeline target'}, t:'text'},
+  {k:'actionSinceLast', l:{fr:'Action déjà exécutée depuis le dernier échange',en:'Action taken since last exchange'}, t:'textarea'},
+  {k:'nextAction', l:{fr:'Prochaine action',en:'Next action'}, t:'text'},
+  {k:'nextActionDate', l:{fr:'Date de la prochaine action',en:'Next action date'}, t:'date'},
+  {k:'meetingNotes', l:{fr:'Notes qualitatives / compte rendu du dernier meeting',en:'Qualitative notes / last meeting recap'}, t:'textarea'},
 ];
 
 const LEVELS = [
-  {k:'unknown', l:'Non renseigné', mult:null},
-  {k:'absent',  l:'Absent', mult:0},
-  {k:'declared',l:'Déclaré sans preuve', mult:0.5},
-  {k:'proven',  l:'Confirmé avec preuve', mult:1},
+  {k:'unknown', l:{fr:'Non renseigné',en:'Not set'}, mult:null},
+  {k:'absent',  l:{fr:'Absent',en:'Absent'}, mult:0},
+  {k:'declared',l:{fr:'Déclaré sans preuve',en:'Declared, no proof'}, mult:0.5},
+  {k:'proven',  l:{fr:'Confirmé avec preuve',en:'Confirmed with proof'}, mult:1},
 ];
 const LEVELS_BINARY = [
-  {k:'unknown', l:'Non renseigné', mult:null},
-  {k:'absent',  l:'Non', mult:0},
-  {k:'proven',  l:'Oui, confirmé', mult:1},
+  {k:'unknown', l:{fr:'Non renseigné',en:'Not set'}, mult:null},
+  {k:'absent',  l:{fr:'Non',en:'No'}, mult:0},
+  {k:'proven',  l:{fr:'Oui, confirmé',en:'Yes, confirmed'}, mult:1},
 ];
 
 const PILLARS = {
   skill: {
     label:'Skill', max:30, weightPct:30, color:'#f46800',
     criteria:[
-      {k:'obs_expertise', l:'Expertise observabilité', max:6},
-      {k:'grafana_stack', l:'Compétences Grafana, Prometheus, Loki, Tempo, Mimir, Alloy, OpenTelemetry', max:6},
-      {k:'delivery', l:'Capacité de delivery, migration, POC et services professionnels', max:5},
-      {k:'cloud_k8s', l:'Compétences cloud et Kubernetes', max:4},
-      {k:'commercial_positioning', l:'Capacité commerciale à positionner une plateforme d\'observabilité', max:4},
-      {k:'client_refs', l:'Références clients démontrables', max:3},
-      {k:'offer_building', l:'Capacité à construire une offre ou un managed service', max:2},
+      {k:'obs_expertise', l:{fr:'Expertise observabilité',en:'Observability expertise'}, max:6},
+      {k:'grafana_stack', l:{fr:'Compétences Grafana, Prometheus, Loki, Tempo, Mimir, Alloy, OpenTelemetry',en:'Grafana, Prometheus, Loki, Tempo, Mimir, Alloy, OpenTelemetry skills'}, max:6},
+      {k:'delivery', l:{fr:'Capacité de delivery, migration, POC et services professionnels',en:'Delivery, migration, POC and professional services capacity'}, max:5},
+      {k:'cloud_k8s', l:{fr:'Compétences cloud et Kubernetes',en:'Cloud and Kubernetes skills'}, max:4},
+      {k:'commercial_positioning', l:{fr:"Capacité commerciale à positionner une plateforme d'observabilité",en:'Sales ability to position an observability platform'}, max:4},
+      {k:'client_refs', l:{fr:'Références clients démontrables',en:'Demonstrable customer references'}, max:3},
+      {k:'offer_building', l:{fr:'Capacité à construire une offre ou un managed service',en:'Ability to build an offering or managed service'}, max:2},
     ]
   },
   scale: {
     label:'Scale', max:25, weightPct:25, color:'#f55f9e',
     criteria:[
-      {k:'geo_coverage', l:'Couverture géographique pertinente', max:4},
-      {k:'enterprise_access', l:'Accès aux comptes Enterprise et Mid-Market', max:5},
-      {k:'mobilizable_team', l:'Nombre de vendeurs et consultants mobilisables', max:4},
-      {k:'verticals', l:'Présence dans les verticales prioritaires', max:4},
-      {k:'marketing_capacity', l:'Capacité marketing et génération de demande', max:3},
-      {k:'recurring_services', l:'Capacité à vendre des services récurrents', max:3},
-      {k:'hyperscaler_rel', l:'Relations avec AWS, Azure ou GCP', max:2},
+      {k:'geo_coverage', l:{fr:'Couverture géographique pertinente',en:'Relevant geographic coverage'}, max:4},
+      {k:'enterprise_access', l:{fr:'Accès aux comptes Enterprise et Mid-Market',en:'Access to Enterprise and Mid-Market accounts'}, max:5},
+      {k:'mobilizable_team', l:{fr:'Nombre de vendeurs et consultants mobilisables',en:'Number of mobilizable sellers and consultants'}, max:4},
+      {k:'verticals', l:{fr:'Présence dans les verticales prioritaires',en:'Presence in priority verticals'}, max:4},
+      {k:'marketing_capacity', l:{fr:'Capacité marketing et génération de demande',en:'Marketing and demand-generation capacity'}, max:3},
+      {k:'recurring_services', l:{fr:'Capacité à vendre des services récurrents',en:'Ability to sell recurring services'}, max:3},
+      {k:'hyperscaler_rel', l:{fr:'Relations avec AWS, Azure ou GCP',en:'Relationships with AWS, Azure or GCP'}, max:2},
     ]
   },
   will: {
     label:'Will', max:30, weightPct:30, color:'#a352cc',
     criteria:[
-      {k:'exec_sponsor', l:'Sponsor exécutif identifié et engagé', max:5},
-      {k:'sales_resources', l:'Ressources commerciales dédiées', max:4},
-      {k:'tech_resources', l:'Ressources techniques dédiées', max:4},
-      {k:'training_commitment', l:'Engagement sur la formation et les certifications', max:4},
-      {k:'named_accounts', l:'Comptes nommés ou opportunités concrètes', max:5},
-      {k:'business_plan', l:'Business plan et objectifs chiffrés', max:3},
-      {k:'marketing_commitment', l:'Engagement marketing', max:2},
-      {k:'execution_quality', l:'Qualité d\'exécution et respect des actions', max:3},
+      {k:'exec_sponsor', l:{fr:'Sponsor exécutif identifié et engagé',en:'Executive sponsor identified and engaged'}, max:5},
+      {k:'sales_resources', l:{fr:'Ressources commerciales dédiées',en:'Dedicated sales resources'}, max:4},
+      {k:'tech_resources', l:{fr:'Ressources techniques dédiées',en:'Dedicated technical resources'}, max:4},
+      {k:'training_commitment', l:{fr:'Engagement sur la formation et les certifications',en:'Commitment to training and certifications'}, max:4},
+      {k:'named_accounts', l:{fr:'Comptes nommés ou opportunités concrètes',en:'Named accounts or concrete opportunities'}, max:5},
+      {k:'business_plan', l:{fr:'Business plan et objectifs chiffrés',en:'Business plan and quantified targets'}, max:3},
+      {k:'marketing_commitment', l:{fr:'Engagement marketing',en:'Marketing commitment'}, max:2},
+      {k:'execution_quality', l:{fr:"Qualité d'exécution et respect des actions",en:'Execution quality and follow-through'}, max:3},
     ]
   },
   fit: {
     label:'Strategic Fit', max:15, weightPct:15, color:'#5b9de3',
     criteria:[
-      {k:'icp_access', l:'Accès aux profils de clients correspondant à l\'ICP Grafana', max:4},
-      {k:'cloud_native_presence', l:'Présence sur environnements cloud, Kubernetes, microservices, DevOps', max:3},
-      {k:'displacement_capacity', l:'Capacité à identifier des opportunités de remplacement (Datadog, Dynatrace, Splunk, Elastic, New Relic)', max:3},
-      {k:'services_differentiation', l:'Potentiel de différenciation par les services', max:2},
-      {k:'coverage_complementarity', l:'Complémentarité avec la couverture Grafana existante', max:2},
-      {k:'no_conflict', l:'Absence de conflit stratégique majeur', max:1},
+      {k:'icp_access', l:{fr:"Accès aux profils de clients correspondant à l'ICP Grafana",en:'Access to customers matching the Grafana ICP'}, max:4},
+      {k:'cloud_native_presence', l:{fr:'Présence sur environnements cloud, Kubernetes, microservices, DevOps',en:'Presence in cloud, Kubernetes, microservices, DevOps environments'}, max:3},
+      {k:'displacement_capacity', l:{fr:'Capacité à identifier des opportunités de remplacement (Datadog, Dynatrace, Splunk, Elastic, New Relic)',en:'Ability to identify displacement opportunities (Datadog, Dynatrace, Splunk, Elastic, New Relic)'}, max:3},
+      {k:'services_differentiation', l:{fr:'Potentiel de différenciation par les services',en:'Services-based differentiation potential'}, max:2},
+      {k:'coverage_complementarity', l:{fr:'Complémentarité avec la couverture Grafana existante',en:'Complementarity with existing Grafana coverage'}, max:2},
+      {k:'no_conflict', l:{fr:'Absence de conflit stratégique majeur',en:'No major strategic conflict'}, max:1},
     ]
   }
 };
 
 const PENALTIES = [
-  {k:'no_sponsor', l:'Aucun sponsor ou owner clairement identifié', min:-5, max:-5, sev:'high'},
-  {k:'no_named_accounts', l:'Aucun compte nommé après deux meetings', min:-5, max:-5, sev:'high'},
-  {k:'no_training', l:'Aucun engagement de formation', min:-4, max:-4, sev:'med'},
-  {k:'no_followup', l:'Aucun suivi des actions convenues', min:-5, max:-5, sev:'high'},
-  {k:'competitor_dependency', l:'Dépendance forte à un concurrent stratégique', min:-8, max:-3, sev:'high'},
-  {k:'no_pipeline_sharing', l:'Refus de partager le pipeline', min:-4, max:-4, sev:'med'},
-  {k:'discount_focus', l:'Intérêt limité au discount ou à la marge', min:-5, max:-5, sev:'med'},
-  {k:'exclusivity_demand', l:'Demande d\'exclusivité sans investissement démontré', min:-8, max:-8, sev:'crit'},
-  {k:'no_capability_no_will', l:'Pas de capacité technique et pas de volonté d\'en créer', min:-8, max:-8, sev:'crit'},
-  {k:'no_client_access', l:'Aucun accès client démontré', min:-6, max:-6, sev:'high'},
-  {k:'inconsistent_info', l:'Informations commerciales incohérentes', min:-5, max:-5, sev:'med'},
-  {k:'legal_risk', l:'Risque juridique, éthique, financier ou réputationnel', min:-25, max:-5, sev:'crit', disqualifying:true},
-  {k:'fulfillment_only', l:'Partenaire recherchant uniquement un mécanisme de fulfillment', min:-4, max:-4, sev:'med'},
-  {k:'too_many_competitors', l:'Trop grand nombre de vendors concurrents activement poussés', min:-7, max:-3, sev:'med'},
-  {k:'low_responsiveness', l:'Faible réactivité répétée', min:-3, max:-3, sev:'low'},
-  {k:'no_action_60d', l:'Absence d\'action concrète dans les 60 jours', min:-5, max:-5, sev:'high'},
+  {k:'no_sponsor', l:{fr:'Aucun sponsor ou owner clairement identifié',en:'No clearly identified sponsor or owner'}, min:-5, max:-5, sev:'high'},
+  {k:'no_named_accounts', l:{fr:'Aucun compte nommé après deux meetings',en:'No named account after two meetings'}, min:-5, max:-5, sev:'high'},
+  {k:'no_training', l:{fr:'Aucun engagement de formation',en:'No training commitment'}, min:-4, max:-4, sev:'med'},
+  {k:'no_followup', l:{fr:'Aucun suivi des actions convenues',en:'No follow-up on agreed actions'}, min:-5, max:-5, sev:'high'},
+  {k:'competitor_dependency', l:{fr:'Dépendance forte à un concurrent stratégique',en:'Strong dependency on a strategic competitor'}, min:-8, max:-3, sev:'high'},
+  {k:'no_pipeline_sharing', l:{fr:'Refus de partager le pipeline',en:'Refusal to share pipeline'}, min:-4, max:-4, sev:'med'},
+  {k:'discount_focus', l:{fr:'Intérêt limité au discount ou à la marge',en:'Interest limited to discount or margin'}, min:-5, max:-5, sev:'med'},
+  {k:'exclusivity_demand', l:{fr:"Demande d'exclusivité sans investissement démontré",en:'Exclusivity demand without demonstrated investment'}, min:-8, max:-8, sev:'crit'},
+  {k:'no_capability_no_will', l:{fr:"Pas de capacité technique et pas de volonté d'en créer",en:'No technical capability and no will to build it'}, min:-8, max:-8, sev:'crit'},
+  {k:'no_client_access', l:{fr:'Aucun accès client démontré',en:'No demonstrated client access'}, min:-6, max:-6, sev:'high'},
+  {k:'inconsistent_info', l:{fr:'Informations commerciales incohérentes',en:'Inconsistent commercial information'}, min:-5, max:-5, sev:'med'},
+  {k:'legal_risk', l:{fr:'Risque juridique, éthique, financier ou réputationnel',en:'Legal, ethical, financial or reputational risk'}, min:-25, max:-5, sev:'crit', disqualifying:true},
+  {k:'fulfillment_only', l:{fr:'Partenaire recherchant uniquement un mécanisme de fulfillment',en:'Partner seeking only a fulfillment mechanism'}, min:-4, max:-4, sev:'med'},
+  {k:'too_many_competitors', l:{fr:'Trop grand nombre de vendors concurrents activement poussés',en:'Too many competing vendors actively pushed'}, min:-7, max:-3, sev:'med'},
+  {k:'low_responsiveness', l:{fr:'Faible réactivité répétée',en:'Repeated low responsiveness'}, min:-3, max:-3, sev:'low'},
+  {k:'no_action_60d', l:{fr:"Absence d'action concrète dans les 60 jours",en:'No concrete action within 60 days'}, min:-5, max:-5, sev:'high'},
 ];
 
 const BONUS_SIGNALS = [
-  'Forte spécialisation Kubernetes, Prometheus, OpenTelemetry ou observabilité',
-  'Fondateurs ou consultants reconnus techniquement',
-  'Accès privilégié à une niche stratégique',
-  'Offre de managed services en construction',
-  'Capacité à générer rapidement des PIO (Partner Identified Opportunities)',
-  'Relation forte avec un hyperscaler',
-  'Capacité de migration depuis Datadog, Elastic, Splunk ou Dynatrace',
-  'Forte culture open source',
-  'Croissance rapide',
-  'Sponsor exécutif personnellement engagé',
-  'Présence dans un marché sous-couvert',
-  'Première opportunité déjà identifiée',
-  'Expertise technique supérieure à la taille de l\'entreprise',
+  {fr:'Forte spécialisation Kubernetes, Prometheus, OpenTelemetry ou observabilité',en:'Strong Kubernetes, Prometheus, OpenTelemetry or observability specialization'},
+  {fr:'Fondateurs ou consultants reconnus techniquement',en:'Technically recognized founders or consultants'},
+  {fr:'Accès privilégié à une niche stratégique',en:'Privileged access to a strategic niche'},
+  {fr:'Offre de managed services en construction',en:'Managed services offering in the making'},
+  {fr:'Capacité à générer rapidement des PIO (Partner Identified Opportunities)',en:'Ability to quickly generate PIOs (Partner Identified Opportunities)'},
+  {fr:'Relation forte avec un hyperscaler',en:'Strong relationship with a hyperscaler'},
+  {fr:'Capacité de migration depuis Datadog, Elastic, Splunk ou Dynatrace',en:'Migration capability from Datadog, Elastic, Splunk or Dynatrace'},
+  {fr:'Forte culture open source',en:'Strong open source culture'},
+  {fr:'Croissance rapide',en:'Rapid growth'},
+  {fr:'Sponsor exécutif personnellement engagé',en:'Personally engaged executive sponsor'},
+  {fr:'Présence dans un marché sous-couvert',en:'Presence in an under-covered market'},
+  {fr:'Première opportunité déjà identifiée',en:'First opportunity already identified'},
+  {fr:"Expertise technique supérieure à la taille de l'entreprise",en:'Technical expertise beyond company size'},
 ];
 
 const QUESTION_BANK = [
-  {k:'ressources', q:(p)=>`Quel commercial et quel technique chez ${nm(p)} seront explicitement affectés au pipeline Grafana, et à quel niveau de temps ?`},
-  {k:'competences', q:(p)=>`Quelles certifications, projets ou consultants Grafana/Prometheus/OpenTelemetry pouvez-vous nous montrer aujourd'hui (noms, références clients) ?`},
-  {k:'sponsor', q:(p)=>`Qui, côté direction de ${nm(p)}, est prêt à sponsoriser personnellement ce partenariat et à participer aux revues trimestrielles ?`},
-  {k:'comptes', q:(p)=>`Quels sont les trois comptes sur lesquels ${nm(p)} pourrait introduire Grafana dans les 90 prochains jours ?`},
-  {k:'pipeline', q:(p)=>`Quel objectif de pipeline êtes-vous prêt à inscrire dans un business plan commun avec Grafana sur 12 mois ?`},
-  {k:'formation', q:(p)=>`Combien de consultants pourriez-vous inscrire à l'enablement Grafana dans les six prochains mois, et sur quel calendrier ?`},
-  {k:'modele', q:(p)=>`Quelle offre de services (workshop, migration, managed service) pourriez-vous facturer autour de Grafana ?`},
-  {k:'concurrence', q:(p)=>`Sur quels clients voyez-vous actuellement une pression de coûts liée à Datadog, Elastic, Splunk, Dynatrace ou New Relic ?`},
-  {k:'delivery', q:(p)=>`Combien de consultants pourraient être mobilisés sur un POC ou une migration Grafana ce trimestre ?`},
-  {k:'action', q:(p)=>`Quelle action concrète êtes-vous prêt à exécuter dans les 30 prochains jours, avec quelle date précise ?`},
+  {k:'ressources', q:(p)=> lang==='en'
+    ? `Which salesperson and which technical resource at ${nm(p)} will be explicitly assigned to the Grafana pipeline, and at what time commitment?`
+    : `Quel commercial et quel technique chez ${nm(p)} seront explicitement affectés au pipeline Grafana, et à quel niveau de temps ?`},
+  {k:'competences', q:(p)=> lang==='en'
+    ? `Which Grafana/Prometheus/OpenTelemetry certifications, projects or consultants can you show us today (names, customer references)?`
+    : `Quelles certifications, projets ou consultants Grafana/Prometheus/OpenTelemetry pouvez-vous nous montrer aujourd'hui (noms, références clients) ?`},
+  {k:'sponsor', q:(p)=> lang==='en'
+    ? `Who, on ${nm(p)}'s leadership side, is ready to personally sponsor this partnership and take part in quarterly reviews?`
+    : `Qui, côté direction de ${nm(p)}, est prêt à sponsoriser personnellement ce partenariat et à participer aux revues trimestrielles ?`},
+  {k:'comptes', q:(p)=> lang==='en'
+    ? `What are the three accounts where ${nm(p)} could introduce Grafana in the next 90 days?`
+    : `Quels sont les trois comptes sur lesquels ${nm(p)} pourrait introduire Grafana dans les 90 prochains jours ?`},
+  {k:'pipeline', q:(p)=> lang==='en'
+    ? `What pipeline target are you willing to commit to in a joint 12-month business plan with Grafana?`
+    : `Quel objectif de pipeline êtes-vous prêt à inscrire dans un business plan commun avec Grafana sur 12 mois ?`},
+  {k:'formation', q:(p)=> lang==='en'
+    ? `How many consultants could you enroll in Grafana enablement over the next six months, and on what schedule?`
+    : `Combien de consultants pourriez-vous inscrire à l'enablement Grafana dans les six prochains mois, et sur quel calendrier ?`},
+  {k:'modele', q:(p)=> lang==='en'
+    ? `What services offering (workshop, migration, managed service) could you bill around Grafana?`
+    : `Quelle offre de services (workshop, migration, managed service) pourriez-vous facturer autour de Grafana ?`},
+  {k:'concurrence', q:(p)=> lang==='en'
+    ? `On which customers do you currently see cost pressure related to Datadog, Elastic, Splunk, Dynatrace or New Relic?`
+    : `Sur quels clients voyez-vous actuellement une pression de coûts liée à Datadog, Elastic, Splunk, Dynatrace ou New Relic ?`},
+  {k:'delivery', q:(p)=> lang==='en'
+    ? `How many consultants could be mobilized on a Grafana POC or migration this quarter?`
+    : `Combien de consultants pourraient être mobilisés sur un POC ou une migration Grafana ce trimestre ?`},
+  {k:'action', q:(p)=> lang==='en'
+    ? `What concrete action are you willing to execute in the next 30 days, and by exactly what date?`
+    : `Quelle action concrète êtes-vous prêt à exécuter dans les 30 prochains jours, avec quelle date précise ?`},
 ];
 
 /* ============================== STATE ============================== */
@@ -445,9 +626,9 @@ function saveState(){
 let saveTimer=null;
 function flashSaved(){
   const el=document.getElementById('saveIndic'); if(!el) return;
-  el.textContent='Sauvegardé ✓'; el.classList.add('flash');
+  el.textContent=t('saved'); el.classList.add('flash');
   clearTimeout(saveTimer);
-  saveTimer=setTimeout(()=>{el.classList.remove('flash');el.textContent='Sauvegardé';},1400);
+  saveTimer=setTimeout(()=>{el.classList.remove('flash');el.textContent=t('saved2');},1400);
 }
 
 function loadPortfolio(){
@@ -455,11 +636,11 @@ function loadPortfolio(){
 }
 function savePortfolio(list){ localStorage.setItem('gpae_portfolio', JSON.stringify(list)); }
 
-function nm(p){ return (p && p.profile && p.profile.partnerName) ? p.profile.partnerName : 'ce partenaire'; }
+function nm(p){ return (p && p.profile && p.profile.partnerName) ? p.profile.partnerName : t('nameFallback'); }
 
 /* ---- top toolbar actions ---- */
 function newEvaluation(){
-  if(!confirm('Démarrer une nouvelle évaluation ? L\'évaluation en cours sera effacée (pensez à l\'enregistrer dans le portfolio ou à l\'exporter avant).')) return;
+  if(!confirm(t('cNew'))) return;
   state = freshState(); currentScreen='profile'; saveState(); render();
 }
 function exportJSON(){
@@ -480,7 +661,7 @@ function importJSON(e){
       if(!obj.scores||!obj.profile) throw new Error('format');
       state = Object.assign(freshState(), obj);
       currentScreen='decision'; saveState(); render();
-    }catch(err){ alert('Fichier invalide : '+err.message); }
+    }catch(err){ alert(t('cImportInvalid', err.message)); }
   };
   reader.readAsText(file);
   e.target.value='';
@@ -565,11 +746,11 @@ function computeAll(state){
 }
 
 function classify(score){
-  if(score>=85) return {cat:'Strategic Growth Partner', priority:'P1', tier:'Tier stratégique / Elite', verdict:'Invest Now'};
-  if(score>=70) return {cat:'High-Potential Partner', priority:'P1 (conditionnel)', tier:'Tier avancé', verdict:'Activate with Conditions'};
-  if(score>=55) return {cat:'Incubate and Validate', priority:'P2', tier:'Tier registré', verdict:'Incubate'};
+  if(score>=85) return {cat:'Strategic Growth Partner', priority:'P1', tier:tx({fr:'Tier stratégique / Elite',en:'Strategic / Elite tier'}), verdict:'Invest Now'};
+  if(score>=70) return {cat:'High-Potential Partner', priority:tx({fr:'P1 (conditionnel)',en:'P1 (conditional)'}), tier:tx({fr:'Tier avancé',en:'Advanced tier'}), verdict:'Activate with Conditions'};
+  if(score>=55) return {cat:'Incubate and Validate', priority:'P2', tier:tx({fr:'Tier registré',en:'Registered tier'}), verdict:'Incubate'};
   if(score>=40) return {cat:'Opportunistic / Referral Only', priority:'P3', tier:'Referral', verdict:'Referral Only'};
-  return {cat:'Do Not Prioritize', priority:'Do not prioritize', tier:'—', verdict:'Do Not Prioritize'};
+  return {cat:'Do Not Prioritize', priority:tx({fr:'Ne pas prioriser',en:'Do not prioritize'}), tier:'—', verdict:'Do Not Prioritize'};
 }
 
 /* ============================== SVG WIDGETS ============================== */
@@ -621,7 +802,7 @@ function radarSVG(vals, size){
 
 function sparklineSVG(points, w, h, color){
   w=w||90; h=h||24; color=color||'#f46800';
-  if(!points || points.length<2) return `<span style="color:var(--muted-dim);font-size:11px">1 version</span>`;
+  if(!points || points.length<2) return `<span style="color:var(--muted-dim);font-size:11px">${t('oneVersion')}</span>`;
   const vals = points.map(p=>p.final);
   const min=Math.min(...vals,0), max=Math.max(...vals,100);
   const rng = (max-min)||1;
@@ -665,7 +846,7 @@ function renderNav(){
     let done=false;
     if(s.id==='profile') done = pf>=0.99;
     else if(s.id==='assessment') done = af>=0.99;
-    b.innerHTML = `<span class="step-dot ${done?'done':''}">${done?'✓':s.n}</span>${s.label}`;
+    b.innerHTML = `<span class="step-dot ${done?'done':''}">${done?'✓':s.n}</span>${tx(s.label)}`;
     b.onclick = ()=>{ currentScreen=s.id; render(); window.scrollTo({top:0}); };
     nav.appendChild(b);
   });
@@ -678,7 +859,7 @@ function renderHeaderScore(){
   document.getElementById('headerScore').innerHTML =
     `<div class="hscore">
       <div class="ring">${gaugeSVG(c.final, col, 46)}<div class="num" style="color:${col}">${c.final.toFixed(0)}</div></div>
-      <div class="meta"><div class="cat" style="color:${col}">${cls.cat}${c.provisional?' <span class="prov-tag">provisoire</span>':''}</div><div class="verdict">${cls.verdict}</div></div>
+      <div class="meta"><div class="cat" style="color:${col}">${cls.cat}${c.provisional?` <span class="prov-tag">${t('provisional')}</span>`:''}</div><div class="verdict">${cls.verdict}</div></div>
     </div>`;
 }
 
@@ -686,14 +867,14 @@ function renderHeaderScore(){
 
 function renderProfile(){
   const pf = Math.round(profileFillRatio(state)*100);
-  let html = `<div class="card"><h2><span class="accent"></span>Profil du partenaire</h2>
-  <p class="hint">24 champs structurants. Les champs vides sont signalés comme information manquante et diminuent le score de confiance. Les champs <span style="color:var(--yellow)">clés</span> pèsent sur la décision.</p>
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><div class="bar" style="flex:1"><i style="width:${pf}%"></i></div><span style="font-size:12px;color:var(--muted)">${pf}% complété</span></div>
+  let html = `<div class="card"><h2><span class="accent"></span>${t('profileTitle')}</h2>
+  <p class="hint">${t('profileHint')}</p>
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><div class="bar" style="flex:1"><i style="width:${pf}%"></i></div><span style="font-size:12px;color:var(--muted)">${pf}${t('pctComplete')}</span></div>
   <div class="grid">`;
   PROFILE_FIELDS.forEach(f=>{
     const val = state.profile[f.k]||'';
     const empty = Array.isArray(val)? !val.length : String(val).trim()==='';
-    html += `<div class="field ${f.req&&empty?'missing':''}" style="${f.t==='textarea'?'grid-column:1/-1':''}"><label>${f.l}${f.req?'<span class="req-tag">clé</span>':''}</label>`;
+    html += `<div class="field ${f.req&&empty?'missing':''}" style="${f.t==='textarea'?'grid-column:1/-1':''}"><label>${tx(f.l)}${f.req?`<span class="req-tag">${t('keyTag')}</span>`:''}</label>`;
     if(f.t==='textarea'){
       html += `<textarea data-k="${f.k}" onchange="onProfileChange(event)">${escapeHtml(val)}</textarea>`;
     } else if(f.t==='select'){
@@ -707,7 +888,7 @@ function renderProfile(){
     html += `</div>`;
   });
   html += `</div></div>
-  <div class="card"><div class="navbtns"><button class="btn" onclick="goTo('assessment')">Continuer vers l'évaluation →</button></div></div>`;
+  <div class="card"><div class="navbtns"><button class="btn" onclick="goTo('assessment')">${t('continueAssess')}</button></div></div>`;
   document.getElementById('main').innerHTML = html;
 }
 
@@ -729,7 +910,7 @@ function renderPillarCard(pillarKey){
   const score = pillarScore(state,pillarKey);
   const pct = Math.round(score/pillar.max*100);
   let html = `<div class="card"><h2><span class="accent" style="background:${pillar.color}"></span>${pillar.label}
-    <span style="color:var(--muted);font-weight:500;font-size:12px;margin-left:auto">${score}/${pillar.max} pts · poids ${pillar.weightPct}%</span></h2>
+    <span style="color:var(--muted);font-weight:500;font-size:12px;margin-left:auto">${score}/${pillar.max} pts · ${t('weight')} ${pillar.weightPct}%</span></h2>
     <div class="bar" style="margin:8px 0 4px"><i style="width:${pct}%;background:${pillar.color}"></i></div>`;
   pillar.criteria.forEach(c=>{
     const isBinary = c.max===1;
@@ -737,14 +918,14 @@ function renderPillarCard(pillarKey){
     const cur = state.scores[c.k]||'unknown';
     const pts = criterionPoints(state,c.k,c.max);
     const note = (state.notes && state.notes[c.k]) || '';
-    html += `<div class="criterion"><div class="top"><span class="name">${c.l}</span>
+    html += `<div class="criterion"><div class="top"><span class="name">${tx(c.l)}</span>
       <span class="max">${cur!=='unknown'?`<span class="pts-live">${pts}</span> / `:''}${c.max} pts</span></div>
       <div class="levels">`;
     levels.forEach(lv=>{
-      html += `<button class="${cur===lv.k?'sel lv-'+lv.k:''}" onclick="setScore('${c.k}','${lv.k}')">${lv.l}</button>`;
+      html += `<button class="${cur===lv.k?'sel lv-'+lv.k:''}" onclick="setScore('${c.k}','${lv.k}')">${tx(lv.l)}</button>`;
     });
     html += `</div>
-      <div class="critnote"><span class="ic">preuve</span><input type="text" value="${escapeHtml(note)}" placeholder="Preuve, lien, certification, référence client…" class="${note?'filled':''}" oninput="setNote('${c.k}', this.value)"></div>
+      <div class="critnote"><span class="ic">${t('noteIc')}</span><input type="text" value="${escapeHtml(note)}" placeholder="${t('notePh')}" class="${note?'filled':''}" oninput="setNote('${c.k}', this.value)"></div>
     </div>`;
   });
   html += `</div>`;
@@ -755,46 +936,46 @@ function renderAssessment(){
   let html = '';
   Object.keys(PILLARS).forEach(pk=> html += renderPillarCard(pk));
 
-  html += `<div class="card"><h2><span class="accent" style="background:var(--red)"></span>Pénalités / Red Flags</h2>
-  <p class="hint">Cochez uniquement les signaux confirmés par des faits. Score final jamais négatif ; le red flag « risque juridique » plafonne le score final à 15.</p>`;
+  html += `<div class="card"><h2><span class="accent" style="background:var(--red)"></span>${t('penaltiesTitle')}</h2>
+  <p class="hint">${t('penaltiesHint')}</p>`;
 
   const suggestions = suggestPenalties(state);
   if(suggestions.length){
-    html += `<div class="suggest"><div class="st"><span>Suggestions basées sur le profil (${suggestions.length})</span><button onclick="applyAllSuggestions()">Tout appliquer</button></div>
-    ${suggestions.map(s=>`<div class="schip"><b>${PENALTIES.find(p=>p.k===s.key).l}</b><span class="why">${s.why}</span><button onclick="applySuggestion('${s.key}')">Cocher</button></div>`).join('')}</div>`;
+    html += `<div class="suggest"><div class="st"><span>${t('suggestTitle', suggestions.length)}</span><button onclick="applyAllSuggestions()">${t('applyAll')}</button></div>
+    ${suggestions.map(s=>`<div class="schip"><b>${tx(PENALTIES.find(p=>p.k===s.key).l)}</b><span class="why">${s.why}</span><button onclick="applySuggestion('${s.key}')">${t('check')}</button></div>`).join('')}</div>`;
   }
 
   PENALTIES.forEach(p=>{
     const checked = !!(state.penalties && state.penalties[p.k]);
     html += `<div class="checkrow"><input type="checkbox" ${checked?'checked':''} onchange="setPenalty('${p.k}', this.checked)">
-      <div style="flex:1"><div class="lbl">${p.l} ${checked?`<span class="badge ${p.sev}" style="margin-left:6px">${sevText(p.sev)}</span>`:''}</div>
-      <div class="pts">${p.min===p.max? p.min+' pts' : p.min+' à '+p.max+' pts'}${p.disqualifying?' · disqualifiant':''}</div>
+      <div style="flex:1"><div class="lbl">${tx(p.l)} ${checked?`<span class="badge ${p.sev}" style="margin-left:6px">${sevText(p.sev)}</span>`:''}</div>
+      <div class="pts">${p.min===p.max? p.min+' pts' : p.min+(lang==='en'?' to ':' à ')+p.max+' pts'}${p.disqualifying?(lang==='en'?' · disqualifying':' · disqualifiant'):''}</div>
       ${(checked && p.min!==p.max && !p.disqualifying) ? `<div class="rangewrap" style="margin-top:6px"><input type="range" min="0" max="2" step="1" value="${sevIndex(state.penaltySeverity[p.k])}" oninput="setPenaltySeverity('${p.k}', this.value)"><span>${sevLabel(state.penaltySeverity[p.k])} (${penaltyValueFor(p, state.penaltySeverity[p.k])})</span></div>` : ''}
       </div></div>`;
   });
   html += `</div>`;
 
-  html += `<div class="card"><h2><span class="accent" style="background:var(--green)"></span>Bonus « Pépite »</h2>
-  <p class="hint">Jusqu'à 10 points bonus, appliqués seulement si au moins deux signaux concrets sont cochés.</p>`;
+  html += `<div class="card"><h2><span class="accent" style="background:var(--green)"></span>${t('bonusTitle')}</h2>
+  <p class="hint">${t('bonusHint')}</p>`;
   BONUS_SIGNALS.forEach((sig,i)=>{
     const k = 'b'+i;
     const checked = !!(state.bonuses && state.bonuses[k]);
-    html += `<div class="checkrow"><input type="checkbox" ${checked?'checked':''} onchange="setBonus('${k}', this.checked)"><div class="lbl">${sig}</div></div>`;
+    html += `<div class="checkrow"><input type="checkbox" ${checked?'checked':''} onchange="setBonus('${k}', this.checked)"><div class="lbl">${tx(sig)}</div></div>`;
   });
   const bt = bonusTotal(state);
-  html += `<p class="hint" style="margin-top:10px">Bonus appliqué : <b style="color:var(--orange)">${bt} pts</b> (${Object.values(state.bonuses||{}).filter(Boolean).length} signaux cochés)</p></div>`;
+  html += `<p class="hint" style="margin-top:10px">${t('bonusApplied', bt, Object.values(state.bonuses||{}).filter(Boolean).length)}</p></div>`;
 
   const c = computeAll(state);
-  html += `<div class="card"><h2><span class="accent"></span>Score en direct</h2>
+  html += `<div class="card"><h2><span class="accent"></span>${t('liveScore')}</h2>
     <div class="pillbar">
       ${scorePill('Skill',c.skill,30,PILLARS.skill.color)}
       ${scorePill('Scale',c.scale,25,PILLARS.scale.color)}
       ${scorePill('Will',c.will,30,PILLARS.will.color)}
       ${scorePill('Strategic Fit',c.fit,15,PILLARS.fit.color)}
-      <div class="pill"><div class="lab">Bonus</div><div class="val" style="color:var(--green)">${c.bonus>0?'+':''}${c.bonus}</div></div>
-      <div class="pill"><div class="lab">Pénalités</div><div class="val" style="color:var(--red)">${c.penalty}</div></div>
+      <div class="pill"><div class="lab">${t('bonusLab')}</div><div class="val" style="color:var(--green)">${c.bonus>0?'+':''}${c.bonus}</div></div>
+      <div class="pill"><div class="lab">${t('penaltyLab')}</div><div class="val" style="color:var(--red)">${c.penalty}</div></div>
     </div>
-    <div class="navbtns"><button class="btn" onclick="goTo('decision')">Voir la décision →</button></div>
+    <div class="navbtns"><button class="btn" onclick="goTo('decision')">${t('seeDecision')}</button></div>
   </div>`;
 
   document.getElementById('main').innerHTML = html;
@@ -806,7 +987,7 @@ function scorePill(lab,val,max,col){
     <div class="bar" style="margin-top:6px"><i style="width:${pct}%;background:${col}"></i></div></div>`;
 }
 function sevIndex(sev){ return sev==='min'?0:(sev==='mid'?1:2); }
-function sevLabel(sev){ return sev==='min'?'Faible':(sev==='mid'?'Moyen':'Fort'); }
+function sevLabel(sev){ return sev==='min'?t('sevFaible'):(sev==='mid'?t('sevMoyen'):t('sevFort')); }
 function penaltyValueFor(def,sev){
   if(def.min===def.max) return def.min;
   if(sev==='min') return def.max;
@@ -834,13 +1015,14 @@ function suggestPenalties(state){
   const comp = (Array.isArray(p.competitors)?p.competitors:[]).filter(x=>x!=='Open-source only' && x!=='Autres');
   const checked = k => state.penalties && state.penalties[k];
   const add = (k,why)=>{ if(!checked(k)) out.push({key:k,why}); };
-  if(!has(p.execSponsor)) add('no_sponsor','Aucun sponsor exécutif renseigné dans le profil.');
-  if(named.length===0) add('no_named_accounts','Aucun compte nommé renseigné dans le profil.');
-  if(!has(p.peopleToTrain)) add('no_training','Nombre de personnes à certifier non renseigné.');
-  if(comp.length>=4) add('too_many_competitors', comp.length+' vendors concurrents déclarés vendus.');
-  if(!has(p.nextAction) && !has(p.actionSinceLast)) add('no_action_60d','Aucune action récente ni prochaine action renseignée.');
-  if(!has(p.pipelineTarget) && !has(p.existingOpps)) add('no_pipeline_sharing','Ni objectif de pipeline ni opportunité renseignés.');
-  if(!has(p.enterpriseAccess)) add('no_client_access','Aucun accès à des comptes Enterprise/Mid-Market renseigné.');
+  const EN = lang==='en';
+  if(!has(p.execSponsor)) add('no_sponsor', EN?'No executive sponsor entered in the profile.':'Aucun sponsor exécutif renseigné dans le profil.');
+  if(named.length===0) add('no_named_accounts', EN?'No named account entered in the profile.':'Aucun compte nommé renseigné dans le profil.');
+  if(!has(p.peopleToTrain)) add('no_training', EN?'Number of people to certify not entered.':'Nombre de personnes à certifier non renseigné.');
+  if(comp.length>=4) add('too_many_competitors', EN? comp.length+' competing vendors declared as sold.' : comp.length+' vendors concurrents déclarés vendus.');
+  if(!has(p.nextAction) && !has(p.actionSinceLast)) add('no_action_60d', EN?'No recent action nor next action entered.':'Aucune action récente ni prochaine action renseignée.');
+  if(!has(p.pipelineTarget) && !has(p.existingOpps)) add('no_pipeline_sharing', EN?'Neither pipeline target nor opportunity entered.':'Ni objectif de pipeline ni opportunité renseignés.');
+  if(!has(p.enterpriseAccess)) add('no_client_access', EN?'No Enterprise/Mid-Market account access entered.':'Aucun accès à des comptes Enterprise/Mid-Market renseigné.');
   return out;
 }
 function applySuggestion(key){ setPenalty(key,true); }
@@ -849,7 +1031,7 @@ function applyAllSuggestions(){
   saveState(); renderAssessment(); renderHeaderScore();
 }
 function criterionLabel(key){
-  for(const pk of Object.keys(PILLARS)){ const c=PILLARS[pk].criteria.find(x=>x.k===key); if(c) return {label:c.l, pillar:PILLARS[pk].label}; }
+  for(const pk of Object.keys(PILLARS)){ const c=PILLARS[pk].criteria.find(x=>x.k===key); if(c) return {label:tx(c.l), pillar:PILLARS[pk].label}; }
   return {label:key, pillar:''};
 }
 function notesList(state){
@@ -874,51 +1056,49 @@ function renderDecision(){
   const c = computeAll(state);
   const cls = classify(c.final);
   const weak = weakestPillar(c), strong = strongestPillar(c);
-  const pName = state.profile.partnerName || '(nom non renseigné)';
-  const pType = state.profile.partnerType || 'type non renseigné';
+  const pName = state.profile.partnerName || t('nameNotSet');
+  const pType = state.profile.partnerType || t('typeNotSet');
   const col = catColor(cls.cat);
+  const nPen = activePenalties().length;
 
   const radarVals = pillarArr(c).map(p=>({label:p.k==='Strategic Fit'?'Fit':p.k, ratio:p.v/p.max, color:p.color}));
 
-  let html = `<div class="card"><h2><span class="accent"></span>Vue d'ensemble</h2>
+  let html = `<div class="card"><h2><span class="accent"></span>${t('overview')}</h2>
     <div class="scorehero">
       <div class="gauge">${gaugeSVG(c.final,col,150)}<div class="center"><div class="n" style="color:${col}">${c.final.toFixed(0)}</div><div class="d">/100</div></div></div>
       <div style="flex:1;min-width:200px">
-        <div class="catbadge" style="background:${col};color:#0d0d0f">${cls.cat}</div>${c.provisional?' <span class="prov-tag">score provisoire</span>':''}
-        <p style="margin:12px 0 4px;font-size:13.5px">Décision recommandée : <b style="color:${col}">${cls.verdict}</b></p>
-        <p style="font-size:12.5px;color:var(--muted)">Priorité ${cls.priority} · ${cls.tier}</p>
-        <div style="margin-top:8px"><span class="conf ${c.confidence}">${confLabel(c.confidence)} — ${Math.round(c.fillRatio*100)}% des critères renseignés</span></div>
-        ${c.provisional?`<div class="prov-note">Score provisoire : moins de 50 % des critères sont renseignés. À traiter comme une hypothèse de travail, pas comme une décision ferme, tant que l'évaluation n'est pas complétée.</div>`:''}
+        <div class="catbadge" style="background:${col};color:#0d0d0f">${cls.cat}</div>${c.provisional?` <span class="prov-tag">${t('provScore')}</span>`:''}
+        <p style="margin:12px 0 4px;font-size:13.5px">${t('decRecommended')} : <b style="color:${col}">${cls.verdict}</b></p>
+        <p style="font-size:12.5px;color:var(--muted)">${t('priorityWord')} ${cls.priority} · ${cls.tier}</p>
+        <div style="margin-top:8px"><span class="conf ${c.confidence}">${confLabel(c.confidence)} — ${t('critFilled', Math.round(c.fillRatio*100))}</span></div>
+        ${c.provisional?`<div class="prov-note">${t('provNote')}</div>`:''}
       </div>
       <div class="radar-wrap">${radarSVG(radarVals,240)}</div>
     </div>
   </div>`;
 
-  html += `<div class="card exec"><h2><span class="accent"></span>1. Executive Summary</h2><p>
-  <b>${pName}</b> (${pType}${state.profile.country? ', '+state.profile.country:''}) obtient <b>${c.final.toFixed(0)}/100</b>, dans la catégorie <b>${cls.cat}</b>.
-  Point fort principal : <b>${strong.k}</b> (${strong.v}/${strong.max}). Point le plus faible : <b>${weak.k}</b> (${weak.v}/${weak.max}) — première zone à faire progresser ou à challenger en meeting.
-  ${activePenalties().length? `${activePenalties().length} red flag${activePenalties().length>1?'s':''} identifié${activePenalties().length>1?'s':''}, à clarifier avant tout investissement.` : `Aucun red flag coché — à confirmer par les faits, pas les déclarations.`}
-  Décision : <b>${cls.verdict}</b>.
+  html += `<div class="card exec"><h2><span class="accent"></span>${t('execTitle')}</h2><p>
+  ${t('execBody', pName, pType, state.profile.country||'', c.final.toFixed(0), cls.cat, strong, weak, nPen, cls.verdict)}
   </p></div>`;
 
-  html += `<div class="card"><h2><span class="accent"></span>2. Scorecard</h2>
-  <table><thead><tr><th>Dimension</th><th>Score</th><th>Max</th><th>Progression</th><th>Niveau de preuve</th></tr></thead><tbody>
+  html += `<div class="card"><h2><span class="accent"></span>${t('scorecardTitle')}</h2>
+  <table><thead><tr><th>${t('thDimension')}</th><th>${t('thScore')}</th><th>${t('thMax')}</th><th>${t('thProgress')}</th><th>${t('thEvidence')}</th></tr></thead><tbody>
   ${scorecardRow('Skill', c.skill, 30, 'skill')}
   ${scorecardRow('Scale', c.scale, 25, 'scale')}
   ${scorecardRow('Will', c.will, 30, 'will')}
   ${scorecardRow('Strategic Fit', c.fit, 15, 'fit')}
-  <tr><td>Bonus Pépite</td><td colspan="2">${c.bonus>0?'+':''}${c.bonus}</td><td></td><td>${Object.values(state.bonuses||{}).filter(Boolean).length} signaux</td></tr>
-  <tr><td>Pénalités</td><td colspan="2" style="color:var(--red)">${c.penalty}</td><td></td><td>${activePenalties().length} red flag(s)</td></tr>
-  <tr style="font-weight:800"><td>Score final</td><td colspan="2" style="color:${col}">${c.final.toFixed(0)} / 100</td><td></td><td>—</td></tr>
+  <tr><td>${t('bonusRow')}</td><td colspan="2">${c.bonus>0?'+':''}${c.bonus}</td><td></td><td>${Object.values(state.bonuses||{}).filter(Boolean).length} ${t('signals')}</td></tr>
+  <tr><td>${t('penaltyLab')}</td><td colspan="2" style="color:var(--red)">${c.penalty}</td><td></td><td>${nPen} red flag(s)</td></tr>
+  <tr style="font-weight:800"><td>${t('finalScore')}</td><td colspan="2" style="color:${col}">${c.final.toFixed(0)} / 100</td><td></td><td>—</td></tr>
   </tbody></table></div>`;
 
-  html += `<div class="card"><h2><span class="accent"></span>3. Classification</h2>
+  html += `<div class="card"><h2><span class="accent"></span>${t('classifTitle')}</h2>
     <table>
-      <tr><td>Niveau de priorité</td><td><b>${cls.priority}</b></td></tr>
-      <tr><td>Modèle de partenariat recommandé</td><td>${recommendedModel(state,c)}</td></tr>
-      <tr><td>Tier potentiel</td><td>${cls.tier}</td></tr>
-      <tr><td>Horizon de génération de pipeline</td><td>${pipelineHorizon(cls.cat)}</td></tr>
-      <tr><td>Score de confiance</td><td><span class="conf ${c.confidence}">${confLabel(c.confidence)} (${Math.round(c.fillRatio*100)}%)</span></td></tr>
+      <tr><td>${t('priorityLevel')}</td><td><b>${cls.priority}</b></td></tr>
+      <tr><td>${t('recModelLabel')}</td><td>${recommendedModel(state,c)}</td></tr>
+      <tr><td>${t('tierPot')}</td><td>${cls.tier}</td></tr>
+      <tr><td>${t('pipeHorizonLabel')}</td><td>${pipelineHorizon(cls.cat)}</td></tr>
+      <tr><td>${t('confScoreLabel')}</td><td><span class="conf ${c.confidence}">${confLabel(c.confidence)} (${Math.round(c.fillRatio*100)}%)</span></td></tr>
     </table>
   </div>`;
 
@@ -927,15 +1107,15 @@ function renderDecision(){
   html += renderJustifications(state);
 
   html += `<div class="card"><div class="navbtns">
-    <button class="btn" onclick="saveToPortfolio()">Enregistrer dans le portfolio</button>
-    <button class="btn secondary" onclick="goTo('meeting')">Préparer le prochain meeting →</button>
-    <button class="btn ghost" onclick="window.print()">Exporter le rapport (PDF)</button>
+    <button class="btn" onclick="saveToPortfolio()">${t('savePortfolioBtn')}</button>
+    <button class="btn secondary" onclick="goTo('meeting')">${t('prepMeetingBtn')}</button>
+    <button class="btn ghost" onclick="window.print()">${t('exportReportBtn')}</button>
   </div></div>`;
 
   document.getElementById('main').innerHTML = html;
 }
 
-function confLabel(c){ return c==='high'?'Haute confiance':(c==='mid'?'Confiance moyenne':'Faible confiance'); }
+function confLabel(c){ return c==='high'?t('confHigh'):(c==='mid'?t('confMid'):t('confLow')); }
 function catColor(cat){
   if(cat==='Strategic Growth Partner') return 'var(--green)';
   if(cat==='High-Potential Partner') return '#8fd6b0';
@@ -945,30 +1125,54 @@ function catColor(cat){
 }
 function scorecardRow(label,val,max,pk){
   const ratio = pillarFillRatio(state,pk);
-  const lvl = ratio>0.8?'Confirmé':(ratio>=0.4?'Déclaré':'Hypothèse / info manquante');
+  const lvl = ratio>0.8?t('evConfirmed'):(ratio>=0.4?t('evDeclared'):t('evHypo'));
   const pct=Math.round(val/max*100);
   return `<tr><td>${label}</td><td>${val}</td><td>${max}</td><td><div class="bar" style="width:90px"><i style="width:${pct}%;background:${PILLARS[pk].color}"></i></div></td><td>${lvl}</td></tr>`;
 }
 function recommendedModel(state,c){
   const motion = state.profile.dominantMotion;
-  if(c.final>=70) return motion? `${motion} avec co-investissement Grafana (enablement, MDF, deal registration prioritaire)` : 'Partenariat investi (co-sell / resale) — motion à confirmer';
-  if(c.final>=55) return 'Partenariat testé sur un périmètre limité (workshop / campagne pilote)';
-  if(c.final>=40) return 'Referral uniquement, support réactif';
-  return 'Relation légère, sans investissement Channel';
+  const EN = lang==='en';
+  if(c.final>=70) return motion
+    ? (EN? `${motion} with Grafana co-investment (enablement, MDF, priority deal registration)` : `${motion} avec co-investissement Grafana (enablement, MDF, deal registration prioritaire)`)
+    : (EN? 'Invested partnership (co-sell / resale) — motion to confirm' : 'Partenariat investi (co-sell / resale) — motion à confirmer');
+  if(c.final>=55) return EN? 'Partnership tested on a limited scope (workshop / pilot campaign)' : 'Partenariat testé sur un périmètre limité (workshop / campagne pilote)';
+  if(c.final>=40) return EN? 'Referral only, reactive support' : 'Referral uniquement, support réactif';
+  return EN? 'Light relationship, no Channel investment' : 'Relation légère, sans investissement Channel';
 }
 function pipelineHorizon(cat){
-  if(cat==='Strategic Growth Partner') return '0–6 mois';
-  if(cat==='High-Potential Partner') return '6–9 mois';
-  if(cat==='Incubate and Validate') return '9–12 mois, à revalider';
-  if(cat==='Opportunistic / Referral Only') return 'Opportuniste, non planifiable';
-  return 'Non pertinent en l\'état';
+  const EN = lang==='en';
+  if(cat==='Strategic Growth Partner') return EN?'0–6 months':'0–6 mois';
+  if(cat==='High-Potential Partner') return EN?'6–9 months':'6–9 mois';
+  if(cat==='Incubate and Validate') return EN?'9–12 months, to revalidate':'9–12 mois, à revalider';
+  if(cat==='Opportunistic / Referral Only') return EN?'Opportunistic, not plannable':'Opportuniste, non planifiable';
+  return EN?'Not relevant as is':"Non pertinent en l'état";
 }
 
 function renderOpportunities(state,c){
-  const motion = state.profile.dominantMotion || 'motion à préciser';
+  const EN = lang==='en';
+  const motion = state.profile.dominantMotion || (EN?'motion to define':'motion à préciser');
   const named = [state.profile.namedAccount1,state.profile.namedAccount2,state.profile.namedAccount3].filter(Boolean);
   const competitors = Array.isArray(state.profile.competitors)?state.profile.competitors:[];
-  const opps = [
+  const opps = EN ? [
+    {title:'Competitive displacement', motion:'Migration / replacement',
+      segments: competitors.length? competitors.filter(x=>x!=='Open-source only').join(', ')||'to confirm' : 'to confirm in meeting',
+      valuePartner:'Margin on migration services + technology repositioning with the customer',
+      valueGrafana:'Qualified pipeline on accounts already running a competitor, cycle accelerated by existing pain (cost, lock-in)',
+      proof: competitors.length? `The partner declares selling ${competitors.join(', ')} — to convert into a Grafana migration.` : 'Missing data — to validate in meeting.',
+      action:'Ask for the 2-3 accounts where cost or lock-in pressure is strongest.'},
+    {title:'Existing named accounts', motion: motion,
+      segments: named.length? named.join(', ') : 'no named account provided',
+      valuePartner:'Basket expansion within already-engaged accounts, no prospecting',
+      valueGrafana:'Fast entry into Enterprise accounts via an installed trusted third party',
+      proof: named.length? `${named.length} named account(s) provided.` : 'No named account — weak Will signal to dig into.',
+      action: named.length? 'Qualify each named account (budget, sponsor, timeline).' : 'Require 3 named accounts before committing more Channel resources.'},
+    {title:'Managed / observability services offering', motion:'Managed services / Practice',
+      segments: state.profile.sectors || 'segments to define',
+      valuePartner:'Recurring revenue that differentiates from generalists',
+      valueGrafana:'Durable adoption, lower churn, technical advocate',
+      proof:'To validate: a dedicated observability practice, not just a theoretical capability.',
+      action:'Ask for the business plan or the packaged offering sheet around Grafana.'}
+  ] : [
     {title:'Déplacement concurrentiel', motion:'Migration / remplacement',
       segments: competitors.length? competitors.filter(x=>x!=='Open-source only').join(', ')||'à confirmer' : 'à confirmer en meeting',
       valuePartner:'Marge sur services de migration + repositionnement techno auprès du client',
@@ -988,14 +1192,14 @@ function renderOpportunities(state,c){
       proof:'À valider : practice observabilité dédiée, pas seulement une capacité théorique.',
       action:'Demander le business plan ou la fiche d\'offre packagée autour de Grafana.'}
   ];
-  let html = `<div class="card"><h2><span class="accent"></span>4. Pourquoi ce partenaire pourrait gagner avec Grafana</h2>`;
+  let html = `<div class="card"><h2><span class="accent"></span>${t('oppsTitle')}</h2>`;
   opps.forEach(o=>{
     html += `<div class="flag low"><div class="head"><span class="name">${o.title}</span><span class="pts">${o.motion}</span></div>
-    <p><b>Clients / segments :</b> ${o.segments}</p>
-    <p><b>Valeur partenaire :</b> ${o.valuePartner}</p>
-    <p><b>Valeur Grafana :</b> ${o.valueGrafana}</p>
-    <p><b>Preuve disponible :</b> ${o.proof}</p>
-    <p><b>Prochaine action :</b> ${o.action}</p></div>`;
+    <p><b>${t('oppClients')} :</b> ${o.segments}</p>
+    <p><b>${t('oppValueP')} :</b> ${o.valuePartner}</p>
+    <p><b>${t('oppValueG')} :</b> ${o.valueGrafana}</p>
+    <p><b>${t('oppProof')} :</b> ${o.proof}</p>
+    <p><b>${t('oppNext')} :</b> ${o.action}</p></div>`;
   });
   html += `</div>`;
   return html;
@@ -1004,33 +1208,36 @@ function renderOpportunities(state,c){
 function renderJustifications(state){
   const notes = notesList(state);
   if(!notes.length) return '';
-  let html = `<div class="card"><h2><span class="accent"></span>Preuves & justifications</h2>
-  <p class="hint">Éléments de preuve saisis sur les critères de scoring — la base factuelle de l'évaluation.</p>
-  <table><thead><tr><th>Pilier</th><th>Critère</th><th>Preuve / note</th></tr></thead><tbody>
+  let html = `<div class="card"><h2><span class="accent"></span>${t('justifTitle')}</h2>
+  <p class="hint">${t('justifHint')}</p>
+  <table><thead><tr><th>${t('thPillar')}</th><th>${t('thCriterion')}</th><th>${t('thProof')}</th></tr></thead><tbody>
   ${notes.map(n=>`<tr><td>${n.pillar}</td><td>${n.label}</td><td>${escapeHtml(n.note)}</td></tr>`).join('')}
   </tbody></table></div>`;
   return html;
 }
 function renderRisks(state,c){
   const active = activePenalties();
-  let html = `<div class="card"><h2><span class="accent" style="background:var(--red)"></span>5. Risques et Red Flags</h2>`;
+  let html = `<div class="card"><h2><span class="accent" style="background:var(--red)"></span>${t('risksTitle')}</h2>`;
   if(!active.length){
-    html += `<p class="hint">Aucun red flag coché. Cela ne signifie pas absence de risque — vérifiez que les preuves (comptes nommés, sponsor, formation, pipeline partagé) sont documentées avant de conclure.</p>`;
+    html += `<p class="hint">${t('noRedFlags')}</p>`;
   } else {
     const order = {crit:0,high:1,med:2,low:3};
     active.slice().sort((a,b)=>order[a.sev]-order[b.sev]).forEach(p=>{
-      html += `<div class="flag ${p.sev}"><div class="head"><span class="name">${p.l}</span><span class="badge ${p.sev}">${sevText(p.sev)}</span></div>
-      <p><b>Impact potentiel :</b> ${riskImpact(p.k)}</p>
-      <p><b>Question à poser :</b> ${riskQuestion(p.k)}</p>
-      <p><b>Mitigation :</b> ${riskMitigation(p.k)}</p></div>`;
+      html += `<div class="flag ${p.sev}"><div class="head"><span class="name">${tx(p.l)}</span><span class="badge ${p.sev}">${sevText(p.sev)}</span></div>
+      <p><b>${t('riskImpactL')} :</b> ${riskImpact(p.k)}</p>
+      <p><b>${t('riskQuestionL')} :</b> ${riskQuestion(p.k)}</p>
+      <p><b>${t('riskMitigationL')} :</b> ${riskMitigation(p.k)}</p></div>`;
     });
   }
   html += `</div>`;
   return html;
 }
-function sevText(s){ return s==='crit'?'Critique':(s==='high'?'Élevé':(s==='med'?'Moyen':'Faible')); }
+function sevText(s){
+  if(lang==='en') return s==='crit'?'Critical':(s==='high'?'High':(s==='med'?'Medium':'Low'));
+  return s==='crit'?'Critique':(s==='high'?'Élevé':(s==='med'?'Moyen':'Faible'));
+}
 function riskImpact(k){
-  const map = {
+  const mapFr = {
     no_sponsor:'Aucune capacité à débloquer des ressources internes en cas de blocage — le partenariat reste opérationnel sans portage exécutif.',
     no_named_accounts:'Absence de preuve concrète que le partenaire peut générer du pipeline réel à court terme.',
     no_training:'Risque de mauvaise mise en œuvre client et de messaging incorrect sur le terrain.',
@@ -1048,10 +1255,29 @@ function riskImpact(k){
     low_responsiveness:'Cadence d\'exécution trop lente pour tenir un plan d\'activation à 90 jours.',
     no_action_60d:'Le partenariat stagne — aucun signal de traction depuis deux mois.'
   };
-  return map[k]||'Impact à qualifier.';
+  const mapEn = {
+    no_sponsor:'No ability to unlock internal resources when blocked — the partnership stays operational-only with no executive backing.',
+    no_named_accounts:'No concrete proof the partner can generate real pipeline in the short term.',
+    no_training:'Risk of poor customer implementation and incorrect field messaging.',
+    no_followup:'Strong signal of low execution reliability — commitments do not turn into actions.',
+    competitor_dependency:'The partner may prioritize a strategic competitor over Grafana in case of conflict.',
+    no_pipeline_sharing:'No way to measure and forecast the partner\'s real contribution.',
+    discount_focus:'Driven by margin more than product value — churn risk if a competitor offers better.',
+    exclusivity_demand:'Seeks to secure an advantage without proof of reciprocal investment.',
+    no_capability_no_will:'No credible path to a functional partnership in the short or medium term.',
+    no_client_access:'Brings no differentiating access to the target market.',
+    inconsistent_info:'Overall reliability of declared information is in question.',
+    legal_risk:'Reputational or legal exposure risk — requires Legal/Compliance validation before proceeding.',
+    fulfillment_only:'Brings no commercial or technical value, only a purchasing mechanism.',
+    too_many_competitors:'Dilution of sales attention across too many competing vendors.',
+    low_responsiveness:'Execution cadence too slow to hold a 90-day activation plan.',
+    no_action_60d:'The partnership stalls — no traction signal in two months.'
+  };
+  const map = lang==='en'?mapEn:mapFr;
+  return map[k]||(lang==='en'?'Impact to qualify.':'Impact à qualifier.');
 }
 function riskQuestion(k){
-  const map = {
+  const mapFr = {
     no_sponsor:'Qui, dans votre organisation, est prêt à sponsoriser ce partenariat au niveau direction ?',
     no_named_accounts:'Pouvez-vous nommer trois comptes précis pour les 90 prochains jours ?',
     no_training:'Combien de personnes êtes-vous prêts à inscrire à l\'enablement Grafana, et quand ?',
@@ -1069,10 +1295,29 @@ function riskQuestion(k){
     low_responsiveness:'Quel délai de réponse pouvez-vous garantir sur les prochaines étapes ?',
     no_action_60d:'Quelle action concrète pouvez-vous exécuter dans les 15 jours pour relancer la dynamique ?'
   };
-  return map[k]||'À définir.';
+  const mapEn = {
+    no_sponsor:'Who in your organization is ready to sponsor this partnership at leadership level?',
+    no_named_accounts:'Can you name three specific accounts for the next 90 days?',
+    no_training:'How many people are you willing to enroll in Grafana enablement, and when?',
+    no_followup:'Which actions agreed at the last exchange were not completed, and why?',
+    competitor_dependency:'What share of your observability revenue depends on this competitor today?',
+    no_pipeline_sharing:'Would you be willing to share your Grafana pipeline via deal registration?',
+    discount_focus:'Beyond margin, what customer value do you see in Grafana?',
+    exclusivity_demand:'What concrete investment do you offer in exchange for the requested exclusivity?',
+    no_capability_no_will:'What is your plan to build a Grafana capability, even a minimal one?',
+    no_client_access:'Which end customers can you introduce us to directly?',
+    inconsistent_info:'Can you clarify the discrepancies between your various statements?',
+    legal_risk:'What can you provide to clear this point with our Legal/Compliance team?',
+    fulfillment_only:'What active role do you play in the sale, beyond invoicing?',
+    too_many_competitors:'What real priority do you give Grafana among your observability vendors?',
+    low_responsiveness:'What response time can you guarantee on the next steps?',
+    no_action_60d:'What concrete action can you execute within 15 days to restart momentum?'
+  };
+  const map = lang==='en'?mapEn:mapFr;
+  return map[k]||(lang==='en'?'To be defined.':'À définir.');
 }
 function riskMitigation(k){
-  const map = {
+  const mapFr = {
     no_sponsor:'Conditionner la suite à l\'identification d\'un sponsor exécutif avant la prochaine revue.',
     no_named_accounts:'Ne pas investir de ressources Channel supplémentaires avant obtention de 3 comptes nommés.',
     no_training:'Fixer un objectif de certification daté avec un nombre minimum de personnes.',
@@ -1090,7 +1335,26 @@ function riskMitigation(k){
     low_responsiveness:'Fixer une cadence de gouvernance stricte (point bi-hebdomadaire) avec critère de sortie.',
     no_action_60d:'Fixer une date de réévaluation à 30 jours avec une action minimale exigée.'
   };
-  return map[k]||'À définir.';
+  const mapEn = {
+    no_sponsor:'Make the next steps conditional on identifying an executive sponsor before the next review.',
+    no_named_accounts:'Do not invest additional Channel resources before securing 3 named accounts.',
+    no_training:'Set a dated certification target with a minimum number of people.',
+    no_followup:'Reduce the investment cadence until execution is proven on a simple action.',
+    competitor_dependency:'Clarify Grafana vs competitor positioning in the partner\'s pitch.',
+    no_pipeline_sharing:'Make pipeline sharing a condition to access the higher tier.',
+    discount_focus:'Reframe the conversation on customer value and use cases, not the discount.',
+    exclusivity_demand:'Refuse exclusivity until proof of investment is on the table.',
+    no_capability_no_will:'Switch to a referral-only model, without Channel investment.',
+    no_client_access:'Test real access via a concrete introduction to an account.',
+    inconsistent_info:'Cross-check statements against third-party sources (LinkedIn, website, customer references).',
+    legal_risk:'Immediate escalation to Legal/Compliance before any commercial continuation.',
+    fulfillment_only:'Limit the partnership to an invoicing role without Channel investment.',
+    too_many_competitors:'Ask for an explicit Grafana prioritization commitment on a given segment.',
+    low_responsiveness:'Set a strict governance cadence (bi-weekly check-in) with an exit criterion.',
+    no_action_60d:'Set a 30-day re-assessment date with a minimum required action.'
+  };
+  const map = lang==='en'?mapEn:mapFr;
+  return map[k]||(lang==='en'?'To be defined.':'À définir.');
 }
 
 function saveToPortfolio(){
@@ -1120,7 +1384,7 @@ function saveToPortfolio(){
   if(idx>=0) list[idx]=entry; else list.push(entry);
   savePortfolio(list);
   const delta = prevHistory.length ? (c.final - prevHistory[prevHistory.length-1].final) : 0;
-  alert(`Partenaire enregistré (v${history.length}).`+(prevHistory.length?` Évolution du score : ${delta>=0?'+':''}${delta.toFixed(0)} pt depuis la dernière sauvegarde.`:' Évaluation complète archivée et rechargeable.'));
+  alert(prevHistory.length ? t('cSavedDelta', history.length, delta.toFixed(0)) : t('cSavedFirst', history.length));
   render();
 }
 
@@ -1129,29 +1393,29 @@ function saveToPortfolio(){
 function renderMeeting(){
   const c = computeAll(state);
   const cls = classify(c.final);
-  const pName = state.profile.partnerName || 'ce partenaire';
+  const pName = state.profile.partnerName || t('nameFallback');
   const weak = weakestPillar(c);
 
-  let html = `<div class="card"><h2><span class="accent"></span>6. Dix questions à poser lors du prochain meeting</h2>
+  let html = `<div class="card"><h2><span class="accent"></span>${t('qTitle')}</h2>
   <ol class="qbank">${QUESTION_BANK.map(q=>`<li>${q.q(state)}</li>`).join('')}</ol></div>`;
 
   const namedMissing = ![state.profile.namedAccount1,state.profile.namedAccount2,state.profile.namedAccount3].some(Boolean);
   const sponsorMissing = !state.profile.execSponsor;
 
-  html += `<div class="card"><h2><span class="accent"></span>7. Meeting Preparation Brief</h2>
+  html += `<div class="card"><h2><span class="accent"></span>${t('briefTitle')}</h2>
   <table>
-    <tr><td>Objectif du meeting</td><td>${cls.cat==='Do Not Prioritize' ? 'Valider s\'il existe un deal concret qui justifie de poursuivre, sinon clore la relation.' : 'Obtenir des preuves concrètes sur la dimension la plus faible (' + weak.k + ') et sécuriser un engagement daté.'}</td></tr>
-    <tr><td>Résultat minimum attendu</td><td>${sponsorMissing? 'Nom d\'un sponsor exécutif engagé.' : ''} ${namedMissing? 'Trois comptes nommés avec contexte (budget, timeline).' : 'Confirmation ou mise à jour des comptes nommés existants.'} Une action datée avant la fin du meeting.</td></tr>
-    <tr><td>Interlocuteurs à influencer</td><td>${[state.profile.execSponsor,state.profile.salesChampion,state.profile.techChampion].filter(Boolean).join(', ') || 'Sponsor exécutif, champion commercial et champion technique — à identifier si absents.'}</td></tr>
-    <tr><td>Hypothèses à valider</td><td>Que ${pName} peut réellement vendre et délivrer Grafana (Skill), qu\'il va y investir du temps et du capital politique (Will), et qu\'il a un accès réel à des comptes pertinents (Scale / Fit).</td></tr>
-    <tr><td>Offre Grafana à positionner</td><td>${offerToPosition(state)}</td></tr>
-    <tr><td>Objections probables</td><td>${likelyObjections(state).join('<br><br>')}</td></tr>
-    <tr><td>Engagement à obtenir</td><td>Date précise pour la prochaine action, et si possible un compte nommé qualifié.</td></tr>
+    <tr><td>${t('mObjective')}</td><td>${cls.cat==='Do Not Prioritize' ? t('mObjClose') : t('mObjImprove', weak.k)}</td></tr>
+    <tr><td>${t('mMinResult')}</td><td>${sponsorMissing? t('mSponsorNeeded')+' ' : ''}${namedMissing? t('mNamedNeeded') : t('mNamedConfirm')} ${t('mDatedAction')}</td></tr>
+    <tr><td>${t('mStakeholders')}</td><td>${[state.profile.execSponsor,state.profile.salesChampion,state.profile.techChampion].filter(Boolean).join(', ') || t('mStakeholdersEmpty')}</td></tr>
+    <tr><td>${t('mHypotheses')}</td><td>${t('mHypoBody', pName)}</td></tr>
+    <tr><td>${t('mOffer')}</td><td>${offerToPosition(state)}</td></tr>
+    <tr><td>${t('mObjections')}</td><td>${likelyObjections(state).join('<br><br>')}</td></tr>
+    <tr><td>${t('mCommit')}</td><td>${t('mCommitBody')}</td></tr>
   </table></div>
   <div class="card"><div class="navbtns">
-    <button class="btn" onclick="goTo('plan')">Voir le plan d'activation →</button>
-    <button class="btn secondary" onclick="copyMeetingMarkdown()">Copier le brief (Markdown)</button>
-    <button class="btn ghost" onclick="downloadMeetingMarkdown()">Télécharger .md</button>
+    <button class="btn" onclick="goTo('plan')">${t('seePlan')}</button>
+    <button class="btn secondary" onclick="copyMeetingMarkdown()">${t('copyBrief')}</button>
+    <button class="btn ghost" onclick="downloadMeetingMarkdown()">${t('downloadMd')}</button>
   </div><span id="mdCopyMsg" style="font-size:12px;color:var(--green);margin-left:10px"></span></div>`;
 
   document.getElementById('main').innerHTML = html;
@@ -1160,55 +1424,56 @@ function renderMeeting(){
 function buildMeetingMarkdown(state){
   const c = computeAll(state);
   const cls = classify(c.final);
-  const pName = state.profile.partnerName || 'Partenaire';
+  const EN = lang==='en';
+  const pName = state.profile.partnerName || (EN?'Partner':'Partenaire');
   const weak = weakestPillar(c), strong = strongestPillar(c);
   const named = [state.profile.namedAccount1,state.profile.namedAccount2,state.profile.namedAccount3].filter(Boolean);
   const L = [];
-  L.push(`# Brief meeting — ${pName}`);
+  L.push(`# ${EN?'Meeting brief':'Brief meeting'} — ${pName}`);
   L.push('');
-  L.push(`- **Score** : ${c.final.toFixed(0)}/100${c.provisional?' (provisoire)':''} — ${cls.cat}`);
-  L.push(`- **Décision recommandée** : ${cls.verdict}`);
-  L.push(`- **Point fort** : ${strong.k} (${strong.v}/${strong.max}) · **Point faible** : ${weak.k} (${weak.v}/${weak.max})`);
-  L.push(`- **Confiance** : ${confLabel(c.confidence)} (${Math.round(c.fillRatio*100)}%)`);
+  L.push(`- **Score** : ${c.final.toFixed(0)}/100${c.provisional?(EN?' (provisional)':' (provisoire)'):''} — ${cls.cat}`);
+  L.push(`- **${EN?'Recommended decision':'Décision recommandée'}** : ${cls.verdict}`);
+  L.push(`- **${EN?'Strength':'Point fort'}** : ${strong.k} (${strong.v}/${strong.max}) · **${EN?'Weakness':'Point faible'}** : ${weak.k} (${weak.v}/${weak.max})`);
+  L.push(`- **${EN?'Confidence':'Confiance'}** : ${confLabel(c.confidence)} (${Math.round(c.fillRatio*100)}%)`);
   L.push('');
-  L.push('## Objectif du meeting');
-  L.push(cls.cat==='Do Not Prioritize' ? 'Valider s\'il existe un deal concret qui justifie de poursuivre, sinon clore la relation.' : `Obtenir des preuves concrètes sur la dimension la plus faible (${weak.k}) et sécuriser un engagement daté.`);
+  L.push('## '+t('mObjective'));
+  L.push(cls.cat==='Do Not Prioritize' ? t('mObjClose') : t('mObjImprove', weak.k));
   L.push('');
-  L.push('## Interlocuteurs');
-  L.push([state.profile.execSponsor,state.profile.salesChampion,state.profile.techChampion].filter(Boolean).join(', ') || 'Sponsor exécutif, champion commercial et champion technique — à identifier.');
+  L.push('## '+(EN?'Stakeholders':'Interlocuteurs'));
+  L.push([state.profile.execSponsor,state.profile.salesChampion,state.profile.techChampion].filter(Boolean).join(', ') || t('mStakeholdersEmpty'));
   L.push('');
-  L.push('## Comptes nommés');
-  L.push(named.length? named.map(n=>`- ${n}`).join('\n') : '- Aucun compte nommé communiqué.');
+  L.push('## '+(EN?'Named accounts':'Comptes nommés'));
+  L.push(named.length? named.map(n=>`- ${n}`).join('\n') : (EN?'- No named account provided.':'- Aucun compte nommé communiqué.'));
   L.push('');
-  L.push('## Offre Grafana à positionner');
+  L.push('## '+t('mOffer'));
   L.push(offerToPosition(state));
   L.push('');
-  L.push('## 10 questions à poser');
+  L.push('## '+(EN?'10 questions to ask':'10 questions à poser'));
   QUESTION_BANK.forEach((q,i)=> L.push(`${i+1}. ${q.q(state)}`));
   L.push('');
-  L.push('## Objections probables');
+  L.push('## '+t('mObjections'));
   likelyObjections(state).forEach(o=> L.push(`- ${o}`));
   const active = activePenalties();
   if(active.length){
     L.push('');
-    L.push('## Red flags à clarifier');
-    active.forEach(p=> L.push(`- **${p.l}** — ${riskQuestion(p.k)}`));
+    L.push('## '+(EN?'Red flags to clarify':'Red flags à clarifier'));
+    active.forEach(p=> L.push(`- **${tx(p.l)}** — ${riskQuestion(p.k)}`));
   }
   L.push('');
-  L.push('## Engagement à obtenir');
-  L.push('Date précise pour la prochaine action, et si possible un compte nommé qualifié.');
+  L.push('## '+t('mCommit'));
+  L.push(t('mCommitBody'));
   return L.join('\n');
 }
 function copyMeetingMarkdown(){
   const md = buildMeetingMarkdown(state);
-  const done = ()=>{ const el=document.getElementById('mdCopyMsg'); if(el){el.textContent='Copié ✓';setTimeout(()=>el.textContent='',2000);} };
+  const done = ()=>{ const el=document.getElementById('mdCopyMsg'); if(el){el.textContent=t('copied');setTimeout(()=>el.textContent='',2000);} };
   if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(md).then(done).catch(()=>fallbackCopy(md,done)); }
   else fallbackCopy(md, done);
 }
 function fallbackCopy(text, done){
   const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
   document.body.appendChild(ta); ta.select();
-  try{ document.execCommand('copy'); done&&done(); }catch(e){ alert('Copie impossible — utilisez « Télécharger .md ».'); }
+  try{ document.execCommand('copy'); done&&done(); }catch(e){ alert(t('cCopyFail')); }
   document.body.removeChild(ta);
 }
 function downloadMeetingMarkdown(){
@@ -1220,18 +1485,26 @@ function downloadMeetingMarkdown(){
 }
 function offerToPosition(state){
   const motion = state.profile.dominantMotion;
-  if(motion==='Managed services') return 'Offre de managed observability packagée autour de Grafana Cloud (LGTM stack).';
-  if(motion==='Resale') return 'Grafana Cloud en revente avec marge, appuyé par du deal registration.';
-  if(motion==='Referral') return 'Programme referral avec commission sur closing par les équipes Grafana.';
-  if(motion==='Co-sell') return 'Motion co-sell conjointe sur comptes Enterprise partagés.';
-  return 'Grafana Cloud / LGTM stack comme alternative ouverte aux plateformes propriétaires (Datadog, Splunk, Dynatrace).';
+  const EN = lang==='en';
+  if(motion==='Managed services') return EN?'Managed observability offering packaged around Grafana Cloud (LGTM stack).':'Offre de managed observability packagée autour de Grafana Cloud (LGTM stack).';
+  if(motion==='Resale') return EN?'Grafana Cloud resold with margin, backed by deal registration.':'Grafana Cloud en revente avec marge, appuyé par du deal registration.';
+  if(motion==='Referral') return EN?'Referral program with commission on closing by Grafana teams.':'Programme referral avec commission sur closing par les équipes Grafana.';
+  if(motion==='Co-sell') return EN?'Joint co-sell motion on shared Enterprise accounts.':'Motion co-sell conjointe sur comptes Enterprise partagés.';
+  return EN?'Grafana Cloud / LGTM stack as an open alternative to proprietary platforms (Datadog, Splunk, Dynatrace).':'Grafana Cloud / LGTM stack comme alternative ouverte aux plateformes propriétaires (Datadog, Splunk, Dynatrace).';
 }
 function likelyObjections(state){
   const comp = Array.isArray(state.profile.competitors)?state.profile.competitors:[];
   const objs = [];
-  if(comp.length && !comp.includes('Open-source only')) objs.push(`« Nous avons déjà des revenus établis sur ${comp[0]}, pourquoi ajouter Grafana ? » → Positionner la complémentarité et les cas de migration/coexistence, pas un remplacement forcé.`);
-  objs.push('« Nous n\'avons pas encore de compétence Grafana en interne » → Proposer un plan d\'enablement daté avec objectif de certification.');
-  objs.push('« Nous voulons voir du pipeline avant d\'investir » → Proposer un pilote limité (1 workshop, 1 compte) avant tout engagement plus large.');
+  const EN = lang==='en';
+  if(comp.length && !comp.includes('Open-source only')) objs.push(EN
+    ? `"We already have established revenue on ${comp[0]}, why add Grafana?" → Position complementarity and migration/coexistence cases, not a forced replacement.`
+    : `« Nous avons déjà des revenus établis sur ${comp[0]}, pourquoi ajouter Grafana ? » → Positionner la complémentarité et les cas de migration/coexistence, pas un remplacement forcé.`);
+  objs.push(EN
+    ? '"We don\'t have Grafana skills in-house yet" → Propose a dated enablement plan with a certification target.'
+    : '« Nous n\'avons pas encore de compétence Grafana en interne » → Proposer un plan d\'enablement daté avec objectif de certification.');
+  objs.push(EN
+    ? '"We want to see pipeline before investing" → Propose a limited pilot (1 workshop, 1 account) before any broader commitment.'
+    : '« Nous voulons voir du pipeline avant d\'investir » → Proposer un pilote limité (1 workshop, 1 compte) avant tout engagement plus large.');
   return objs;
 }
 
@@ -1240,27 +1513,27 @@ function likelyObjections(state){
 function renderPlan(){
   const c = computeAll(state);
   const cls = classify(c.final);
-  const pName = state.profile.partnerName || 'le partenaire';
+  const pName = state.profile.partnerName || t('partnerFallback');
   const phases = buildPlan(state,c,cls,pName);
 
-  let html = `<div class="card"><h2><span class="accent"></span>8. Plan d'activation</h2><p class="hint">Catégorie : <b>${cls.cat}</b> — le plan est calibré en conséquence.</p>`;
+  let html = `<div class="card"><h2><span class="accent"></span>${t('planTitle')}</h2><p class="hint">${t('planCategory', cls.cat)}</p>`;
   phases.forEach(ph=>{
     html += `<div class="planphase"><h4><span class="tag">${ph.title}</span></h4>
-    <div class="plangrid head"><div>Action</div><div>Owner</div><div>Échéance</div><div>Résultat attendu</div></div>
+    <div class="plangrid head"><div>${t('colAction')}</div><div>${t('colOwner')}</div><div>${t('colDue')}</div><div>${t('colResult')}</div></div>
     ${ph.items.map(it=>`<div class="plangrid"><div>${it.action}</div><div>${it.owner}</div><div>${it.due}</div><div>${it.result}</div></div>`).join('')}
     </div>`;
   });
   html += `</div>`;
 
-  html += `<div class="card"><h2><span class="accent"></span>9. Conditions de poursuite</h2><p class="hint">Trois preuves que ${pName} doit fournir pour justifier un investissement Grafana supplémentaire :</p>
+  html += `<div class="card"><h2><span class="accent"></span>${t('conditionsTitle')}</h2><p class="hint">${t('conditionsHint', pName)}</p>
   <ol class="qbank">${buildConditions(state,c).map(x=>`<li>${x}</li>`).join('')}</ol></div>`;
 
-  html += `<div class="card"><h2><span class="accent"></span>10. Verdict final</h2>
+  html += `<div class="card"><h2><span class="accent"></span>${t('verdictTitle')}</h2>
   <div class="catbadge" style="background:${catColor(cls.cat)};color:#0d0d0f;font-size:16px">${cls.verdict}</div>
   <p style="margin-top:12px;font-size:13.5px;line-height:1.65">${verdictJustification(state,c,cls)}</p>
   <table style="margin-top:10px">
-    <tr><td>Prochaine décision à prendre</td><td>${nextDecision(cls)}</td></tr>
-    <tr><td>Date de réévaluation recommandée</td><td>${reevalDate(cls)}</td></tr>
+    <tr><td>${t('nextDecisionLabel')}</td><td>${nextDecision(cls)}</td></tr>
+    <tr><td>${t('reevalLabel')}</td><td>${reevalDate(cls)}</td></tr>
   </table></div>`;
 
   document.getElementById('main').innerHTML = html;
@@ -1268,97 +1541,146 @@ function renderPlan(){
 
 function buildPlan(state,c,cls,pName){
   const channelOwner = 'Channel Manager';
+  const EN = lang==='en';
+  const P = EN ? ['0 to 30 days','31 to 60 days','61 to 90 days'] : ['0 à 30 jours','31 à 60 jours','61 à 90 jours'];
+  const D = EN ? ['D+30','D+60','D+90'] : ['J+30','J+60','J+90'];
   if(cls.cat==='Strategic Growth Partner' || cls.cat==='High-Potential Partner'){
-    return [
-      {title:'0 à 30 jours', items:[
-        {action:`Formaliser le sponsor exécutif et signer un business plan chiffré avec ${pName}`, owner:channelOwner, due:'J+30', result:'Business plan signé avec objectif de pipeline'},
-        {action:'Lancer l\'enablement (certifications) pour les personnes identifiées', owner:'Partner + Channel Manager', due:'J+30', result:`${state.profile.peopleToTrain||'N'} personnes inscrites à la formation`},
-        {action:'Qualifier les comptes nommés (budget, sponsor, timeline)', owner:'AE / Partner', due:'J+30', result:'3 comptes nommés qualifiés avec next step daté'},
+    return EN ? [
+      {title:P[0], items:[
+        {action:`Formalize the executive sponsor and sign a quantified business plan with ${pName}`, owner:channelOwner, due:D[0], result:'Signed business plan with a pipeline target'},
+        {action:'Launch enablement (certifications) for the identified people', owner:'Partner + Channel Manager', due:D[0], result:`${state.profile.peopleToTrain||'N'} people enrolled in training`},
+        {action:'Qualify the named accounts (budget, sponsor, timeline)', owner:'AE / Partner', due:D[0], result:'3 named accounts qualified with a dated next step'},
       ]},
-      {title:'31 à 60 jours', items:[
-        {action:'Organiser un premier workshop ou POC client conjoint', owner:'Solutions Engineering + Partner', due:'J+60', result:'1 workshop réalisé, 1 opportunité enregistrée (PIO)'},
-        {action:'Aligner Sales et Solutions Engineering sur les comptes prioritaires', owner:'Channel Manager', due:'J+60', result:'Plan de compte partagé sur 3+ comptes'},
-        {action:'Mettre en place le reporting de pipeline (deal registration)', owner:'Partner', due:'J+60', result:'Pipeline visible et partagé en revue'},
+      {title:P[1], items:[
+        {action:'Run a first joint customer workshop or POC', owner:'Solutions Engineering + Partner', due:D[1], result:'1 workshop delivered, 1 opportunity registered (PIO)'},
+        {action:'Align Sales and Solutions Engineering on priority accounts', owner:'Channel Manager', due:D[1], result:'Shared account plan on 3+ accounts'},
+        {action:'Set up pipeline reporting (deal registration)', owner:'Partner', due:D[1], result:'Pipeline visible and shared in reviews'},
       ]},
-      {title:'61 à 90 jours', items:[
-        {action:'Revue de gouvernance trimestrielle avec sponsor exécutif', owner:'Channel Manager + Sponsor', due:'J+90', result:'Objectif de pipeline 12 mois confirmé ou ajusté'},
-        {action:'Lancer une action marketing conjointe (webinar, campagne)', owner:'Marketing + Partner', due:'J+90', result:'1 action marketing exécutée, leads générés'},
-        {action:'Décider du tier définitif dans le Partner Program', owner:'Channel Manager', due:'J+90', result:'Tier confirmé avec engagements mesurables'},
+      {title:P[2], items:[
+        {action:'Quarterly governance review with the executive sponsor', owner:'Channel Manager + Sponsor', due:D[2], result:'12-month pipeline target confirmed or adjusted'},
+        {action:'Launch a joint marketing action (webinar, campaign)', owner:'Marketing + Partner', due:D[2], result:'1 marketing action executed, leads generated'},
+        {action:'Decide the definitive tier in the Partner Program', owner:'Channel Manager', due:D[2], result:'Tier confirmed with measurable commitments'},
+      ]},
+    ] : [
+      {title:P[0], items:[
+        {action:`Formaliser le sponsor exécutif et signer un business plan chiffré avec ${pName}`, owner:channelOwner, due:D[0], result:'Business plan signé avec objectif de pipeline'},
+        {action:'Lancer l\'enablement (certifications) pour les personnes identifiées', owner:'Partner + Channel Manager', due:D[0], result:`${state.profile.peopleToTrain||'N'} personnes inscrites à la formation`},
+        {action:'Qualifier les comptes nommés (budget, sponsor, timeline)', owner:'AE / Partner', due:D[0], result:'3 comptes nommés qualifiés avec next step daté'},
+      ]},
+      {title:P[1], items:[
+        {action:'Organiser un premier workshop ou POC client conjoint', owner:'Solutions Engineering + Partner', due:D[1], result:'1 workshop réalisé, 1 opportunité enregistrée (PIO)'},
+        {action:'Aligner Sales et Solutions Engineering sur les comptes prioritaires', owner:'Channel Manager', due:D[1], result:'Plan de compte partagé sur 3+ comptes'},
+        {action:'Mettre en place le reporting de pipeline (deal registration)', owner:'Partner', due:D[1], result:'Pipeline visible et partagé en revue'},
+      ]},
+      {title:P[2], items:[
+        {action:'Revue de gouvernance trimestrielle avec sponsor exécutif', owner:'Channel Manager + Sponsor', due:D[2], result:'Objectif de pipeline 12 mois confirmé ou ajusté'},
+        {action:'Lancer une action marketing conjointe (webinar, campagne)', owner:'Marketing + Partner', due:D[2], result:'1 action marketing exécutée, leads générés'},
+        {action:'Décider du tier définitif dans le Partner Program', owner:'Channel Manager', due:D[2], result:'Tier confirmé avec engagements mesurables'},
       ]},
     ];
   }
   if(cls.cat==='Incubate and Validate'){
-    return [
-      {title:'0 à 30 jours', items:[
-        {action:'Tester le partenaire sur une opportunité ou un workshop unique', owner:channelOwner, due:'J+30', result:'1 preuve d\'exécution concrète obtenue'},
-        {action:'Demander 3 comptes nommés et un engagement de formation minimal', owner:'Partner', due:'J+30', result:'Comptes nommés + date de certification'},
+    return EN ? [
+      {title:P[0], items:[
+        {action:'Test the partner on a single opportunity or workshop', owner:channelOwner, due:D[0], result:'1 concrete proof of execution obtained'},
+        {action:'Request 3 named accounts and a minimal training commitment', owner:'Partner', due:D[0], result:'Named accounts + certification date'},
       ]},
-      {title:'31 à 60 jours', items:[
-        {action:'Observer la vitesse et la qualité d\'exécution sur l\'action test', owner:channelOwner, due:'J+60', result:'Décision Go/No-Go documentée'},
+      {title:P[1], items:[
+        {action:'Observe speed and quality of execution on the test action', owner:channelOwner, due:D[1], result:'Documented Go/No-Go decision'},
       ]},
-      {title:'61 à 90 jours', items:[
-        {action:'Réévaluer le score complet avec les nouvelles preuves', owner:channelOwner, due:'J+90', result:'Nouveau score et décision de tier'},
+      {title:P[2], items:[
+        {action:'Re-assess the full score with the new proofs', owner:channelOwner, due:D[2], result:'New score and tier decision'},
+      ]},
+    ] : [
+      {title:P[0], items:[
+        {action:'Tester le partenaire sur une opportunité ou un workshop unique', owner:channelOwner, due:D[0], result:'1 preuve d\'exécution concrète obtenue'},
+        {action:'Demander 3 comptes nommés et un engagement de formation minimal', owner:'Partner', due:D[0], result:'Comptes nommés + date de certification'},
+      ]},
+      {title:P[1], items:[
+        {action:'Observer la vitesse et la qualité d\'exécution sur l\'action test', owner:channelOwner, due:D[1], result:'Décision Go/No-Go documentée'},
+      ]},
+      {title:P[2], items:[
+        {action:'Réévaluer le score complet avec les nouvelles preuves', owner:channelOwner, due:D[2], result:'Nouveau score et décision de tier'},
       ]},
     ];
   }
-  return [
-    {title:'0 à 30 jours', items:[
-      {action:'Basculer en modèle referral, support réactif uniquement', owner:channelOwner, due:'J+30', result:'Pas d\'investissement Channel supplémentaire engagé'},
+  return EN ? [
+    {title:P[0], items:[
+      {action:'Switch to a referral model, reactive support only', owner:channelOwner, due:D[0], result:'No additional Channel investment committed'},
     ]},
-    {title:'31 à 60 jours', items:[
-      {action:'Surveiller l\'apparition d\'un deal concret ou d\'un changement de posture', owner:channelOwner, due:'J+60', result:'Décision de réévaluation ou de clôture'},
+    {title:P[1], items:[
+      {action:'Watch for a concrete deal or a change in posture', owner:channelOwner, due:D[1], result:'Re-assessment or closure decision'},
     ]},
-    {title:'61 à 90 jours', items:[
-      {action:'Clôturer ou réévaluer selon signal reçu', owner:channelOwner, due:'J+90', result:'Statut final documenté'},
+    {title:P[2], items:[
+      {action:'Close or re-assess based on the signal received', owner:channelOwner, due:D[2], result:'Final status documented'},
+    ]},
+  ] : [
+    {title:P[0], items:[
+      {action:'Basculer en modèle referral, support réactif uniquement', owner:channelOwner, due:D[0], result:'Pas d\'investissement Channel supplémentaire engagé'},
+    ]},
+    {title:P[1], items:[
+      {action:'Surveiller l\'apparition d\'un deal concret ou d\'un changement de posture', owner:channelOwner, due:D[1], result:'Décision de réévaluation ou de clôture'},
+    ]},
+    {title:P[2], items:[
+      {action:'Clôturer ou réévaluer selon signal reçu', owner:channelOwner, due:D[2], result:'Statut final documenté'},
     ]},
   ];
 }
 function buildConditions(state,c){
   const conditions = [];
+  const EN = lang==='en';
   const named = [state.profile.namedAccount1,state.profile.namedAccount2,state.profile.namedAccount3].filter(Boolean);
-  if(named.length<3) conditions.push(`Trois comptes nommés qualifiés (actuellement ${named.length}/3 communiqués)`);
-  if(!state.profile.execSponsor) conditions.push('Un sponsor exécutif présent à la prochaine revue trimestrielle');
-  conditions.push(`${state.profile.peopleToTrain||'Deux'} personnes inscrites et engagées dans l'enablement Grafana`);
-  if(conditions.length<3) conditions.push('Un workshop client planifié avec une date confirmée');
-  if(conditions.length<3) conditions.push('Une opportunité enregistrée (deal registration) avec le programme partenaire');
+  if(named.length<3) conditions.push(EN? `Three qualified named accounts (currently ${named.length}/3 provided)` : `Trois comptes nommés qualifiés (actuellement ${named.length}/3 communiqués)`);
+  if(!state.profile.execSponsor) conditions.push(EN? 'An executive sponsor present at the next quarterly review' : 'Un sponsor exécutif présent à la prochaine revue trimestrielle');
+  conditions.push(EN? `${state.profile.peopleToTrain||'Two'} people enrolled and engaged in Grafana enablement` : `${state.profile.peopleToTrain||'Deux'} personnes inscrites et engagées dans l'enablement Grafana`);
+  if(conditions.length<3) conditions.push(EN? 'A customer workshop scheduled with a confirmed date' : 'Un workshop client planifié avec une date confirmée');
+  if(conditions.length<3) conditions.push(EN? 'An opportunity registered (deal registration) with the partner program' : 'Une opportunité enregistrée (deal registration) avec le programme partenaire');
   return conditions.slice(0,3);
 }
 function verdictJustification(state,c,cls){
-  const pName = state.profile.partnerName || 'Ce partenaire';
+  const EN = lang==='en';
+  const pName = state.profile.partnerName || t('nameFallbackCap');
   const weak = weakestPillar(c);
+  if(EN){
+    return `${pName} scores ${c.final.toFixed(0)}/100, with ${strongestPillar(c).k} as the main anchor and ${weak.k} as the biggest constraint. `+
+    `${activePenalties().length? 'Active red flags ('+activePenalties().length+') reinforce the recommended caution.' : 'No red flag is active at this stage, but confidence remains ' + confLabel(c.confidence).toLowerCase() + '.'} `+
+    `The "${cls.verdict}" recommendation reflects a balance between demonstrated potential and the level of proof available today.`;
+  }
   return `${pName} obtient ${c.final.toFixed(0)}/100, avec ${strongestPillar(c).k} comme point d'appui principal et ${weak.k} comme frein le plus important. `+
   `${activePenalties().length? 'Des red flags actifs ('+activePenalties().length+') renforcent la prudence recommandée.' : 'Aucun red flag n\'est actif à ce stade, mais la confiance reste ' + confLabel(c.confidence).toLowerCase() + '.'} `+
   `La recommandation « ${cls.verdict} » reflète un équilibre entre le potentiel démontré et le niveau de preuve disponible aujourd'hui.`;
 }
 function nextDecision(cls){
-  if(cls.verdict==='Invest Now') return 'Allouer un budget Channel dédié et nommer un owner interne unique.';
-  if(cls.verdict==='Activate with Conditions') return 'Conditionner tout investissement additionnel à l\'obtention des preuves listées en section 9.';
-  if(cls.verdict==='Incubate') return 'Lancer le test à échelle réduite avant toute décision de tier.';
-  if(cls.verdict==='Referral Only') return 'Documenter le statut referral et ne pas allouer de ressources Channel dédiées.';
-  return 'Ne pas poursuivre sauf apparition d\'un deal concret et qualifié.';
+  const EN = lang==='en';
+  if(cls.verdict==='Invest Now') return EN?'Allocate a dedicated Channel budget and name a single internal owner.':'Allouer un budget Channel dédié et nommer un owner interne unique.';
+  if(cls.verdict==='Activate with Conditions') return EN?'Make any additional investment conditional on obtaining the proofs listed in section 9.':'Conditionner tout investissement additionnel à l\'obtention des preuves listées en section 9.';
+  if(cls.verdict==='Incubate') return EN?'Launch the small-scale test before any tier decision.':'Lancer le test à échelle réduite avant toute décision de tier.';
+  if(cls.verdict==='Referral Only') return EN?'Document the referral status and do not allocate dedicated Channel resources.':'Documenter le statut referral et ne pas allouer de ressources Channel dédiées.';
+  return EN?'Do not proceed unless a concrete, qualified deal appears.':'Ne pas poursuivre sauf apparition d\'un deal concret et qualifié.';
 }
 function reevalDate(cls){
   const days = cls.verdict==='Invest Now'?90:(cls.verdict==='Activate with Conditions'?90:(cls.verdict==='Incubate'?60:30));
   const d = new Date(); d.setDate(d.getDate()+days);
-  return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}) + ` (dans ${days} jours)`;
+  const loc = lang==='en'?'en-US':'fr-FR';
+  return d.toLocaleDateString(loc,{day:'2-digit',month:'long',year:'numeric'}) + ' ' + t('inDays', days);
 }
 
 /* ============================== SCREEN 6 - PORTFOLIO ============================== */
 
 function renderPortfolio(){
   const list = loadPortfolio();
-  let html = `<div class="card"><h2><span class="accent"></span>Portfolio des partenaires évalués</h2>`;
+  let html = `<div class="card"><h2><span class="accent"></span>${t('pfTitle')}</h2>`;
   if(!list.length){
-    html += `<div class="empty">Aucun partenaire enregistré. Complétez une évaluation puis cliquez sur « Enregistrer dans le portfolio » à l'écran Décision.</div></div>`;
+    html += `<div class="empty">${t('pfEmpty')}</div></div>`;
     document.getElementById('main').innerHTML = html;
     return;
   }
-  html += `<p class="hint">Matrice Potentiel (Skill + Scale + Fit, /70) × Volonté (Will, /30). Couleur = catégorie.</p>
+  html += `<p class="hint">${t('pfMatrixHint')}</p>
   <div class="matrix" id="matrixWrap">
-    <div class="qlabel" style="top:6px;left:8px">Faible potentiel · Forte volonté</div>
-    <div class="qlabel" style="top:6px;right:8px;text-align:right">Fort potentiel · Forte volonté</div>
-    <div class="qlabel" style="bottom:6px;left:8px">Faible potentiel · Faible volonté</div>
-    <div class="qlabel" style="bottom:6px;right:8px;text-align:right">Fort potentiel · Faible volonté</div>
+    <div class="qlabel" style="top:6px;left:8px">${t('qLowPotHiWill')}</div>
+    <div class="qlabel" style="top:6px;right:8px;text-align:right">${t('qHiPotHiWill')}</div>
+    <div class="qlabel" style="bottom:6px;left:8px">${t('qLowPotLoWill')}</div>
+    <div class="qlabel" style="bottom:6px;right:8px;text-align:right">${t('qHiPotLoWill')}</div>
     <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--border)"></div>
     <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:var(--border)"></div>
     ${list.map((p)=>{
@@ -1376,9 +1698,9 @@ function renderPortfolio(){
     html += renderCompareCard(list);
   }
 
-  html += `<div class="card"><div class="toolbar"><h2 style="margin:0"><span class="accent"></span>Liste</h2>
-    <button class="iconbtn" onclick="exportPortfolioCSV()">↓ Export CSV</button></div>
-  <table><thead><tr><th>Partenaire</th><th>Type</th><th>Score</th><th>Tendance</th><th>Catégorie</th><th>Enregistré</th><th></th></tr></thead><tbody>
+  html += `<div class="card"><div class="toolbar"><h2 style="margin:0"><span class="accent"></span>${t('listTitle')}</h2>
+    <button class="iconbtn" onclick="exportPortfolioCSV()">${t('exportCsv')}</button></div>
+  <table><thead><tr><th>${t('thPartner')}</th><th>${t('thType')}</th><th>${t('thScore')}</th><th>${t('thTrend')}</th><th>${t('thCategory')}</th><th>${t('thSaved')}</th><th></th></tr></thead><tbody>
   ${list.slice().sort((a,b)=>((b.computed||b.scores).final||0)-((a.computed||a.scores).final||0)).map(p=>{
     const cc=p.computed||p.scores;
     return `<tr>
@@ -1387,8 +1709,8 @@ function renderPortfolio(){
     <td style="color:${catColorHex(p.category)};font-weight:700">${(cc.final||0).toFixed(0)}/100</td>
     <td>${sparklineSVG(p.history, 90, 24, catColorHex(p.category))}</td>
     <td>${p.category}</td>
-    <td>${new Date(p.savedAt).toLocaleDateString('fr-FR')}</td>
-    <td style="white-space:nowrap"><button class="btn secondary" onclick="loadFromPortfolio('${p.id}')">Ouvrir</button> <button class="btn ghost" onclick="deleteFromPortfolio('${p.id}')">Suppr.</button></td>
+    <td>${new Date(p.savedAt).toLocaleDateString(lang==='en'?'en-US':'fr-FR')}</td>
+    <td style="white-space:nowrap"><button class="btn secondary" onclick="loadFromPortfolio('${p.id}')">${t('openBtn')}</button> <button class="btn ghost" onclick="deleteFromPortfolio('${p.id}')">${t('delBtn')}</button></td>
   </tr>`;}).join('')}
   </tbody></table></div>`;
 
@@ -1403,8 +1725,8 @@ function renderCompareCard(list){
     name:p.profile.partnerName||'?', color:COMPARE_COLORS[i%3],
     ratios:[(cc.skill||0)/maxes.Skill,(cc.scale||0)/maxes.Scale,(cc.will||0)/maxes.Will,(cc.fit||0)/maxes.Fit]
   };});
-  let html = `<div class="card"><h2><span class="accent"></span>Comparaison (radar)</h2>
-  <p class="hint">Sélectionnez jusqu'à 3 partenaires pour superposer leurs profils Skill / Scale / Will / Fit.</p>
+  let html = `<div class="card"><h2><span class="accent"></span>${t('cmpTitle')}</h2>
+  <p class="hint">${t('cmpHint')}</p>
   <div class="cmp-toolbar">${list.map(p=>{
     const on = compareSel.includes(p.id);
     const dis = !on && compareSel.length>=3;
@@ -1414,7 +1736,7 @@ function renderCompareCard(list){
     html += `<div style="display:flex;justify-content:center">${radarMultiSVG(axes, series, 320)}</div>
     <div class="cmp-legend">${series.map(s=>`<div class="row"><span class="sw" style="background:${s.color}"></span>${escapeHtml(s.name)}</div>`).join('')}</div>`;
   } else {
-    html += `<div class="empty">Cochez au moins un partenaire pour afficher le radar.</div>`;
+    html += `<div class="empty">${t('cmpEmpty')}</div>`;
   }
   html += `</div>`;
   return html;
@@ -1436,7 +1758,7 @@ function loadFromPortfolio(id){
   const list = loadPortfolio();
   const entry = list.find(p=>p.id===id);
   if(!entry) return;
-  if(!confirm('Charger ce partenaire remplacera l\'évaluation en cours. Continuer ?')) return;
+  if(!confirm(t('cLoad'))) return;
   // Full restore now that the snapshot stores everything.
   state = Object.assign(freshState(), {
     profile:{...entry.profile},
@@ -1452,7 +1774,7 @@ function loadFromPortfolio(id){
   render(); window.scrollTo({top:0});
 }
 function deleteFromPortfolio(id){
-  if(!confirm('Supprimer ce partenaire du portfolio ?')) return;
+  if(!confirm(t('cDelete'))) return;
   let list = loadPortfolio().filter(p=>p.id!==id);
   savePortfolio(list); render();
 }
@@ -1471,7 +1793,21 @@ function exportPortfolioCSV(){
 
 /* ============================== MAIN RENDER ============================== */
 
+function renderChrome(){
+  document.documentElement.setAttribute('lang', lang);
+  const sub=document.getElementById('subTitle'); if(sub) sub.textContent=t('sub');
+  const foot=document.getElementById('footer'); if(foot) foot.textContent=t('footer');
+  const tb=document.getElementById('toolbtns');
+  if(tb) tb.innerHTML =
+    `<button class="iconbtn" onclick="newEvaluation()" title="${t('tbNewT')}">${t('tbNew')}</button>
+     <button class="iconbtn" onclick="exportJSON()" title="${t('tbExportT')}">${t('tbExport')}</button>
+     <button class="iconbtn" onclick="document.getElementById('importFile').click()" title="${t('tbImportT')}">${t('tbImport')}</button>
+     <button class="iconbtn" onclick="window.print()" title="${t('tbPdfT')}">${t('tbPdf')}</button>`;
+  const si=document.getElementById('saveIndic'); if(si && !si.classList.contains('flash')) si.textContent=t('ready');
+  document.querySelectorAll('#langsw button').forEach(b=>b.classList.toggle('on', b.dataset.l===lang));
+}
 function render(){
+  renderChrome();
   renderNav();
   renderHeaderScore();
   if(currentScreen==='profile') renderProfile();
