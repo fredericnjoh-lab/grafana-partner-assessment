@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Grafana Partner Assessment Engine</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    /* Grafana-inspired palette */
+    --bg:#0b0c0e; --bg-grad:#111217;
+    --panel:#181b1f; --panel2:#22252b; --panel3:#2a2d35;
+    --border:#2c2f36; --border-soft:#23262c;
+    --text:#d8d9e0; --text-strong:#f4f5f8; --muted:#8e8fa0; --muted-dim:#6a6b78;
+    --orange:#f46800; --orange-2:#ff8833; --orange-dim:#3a2412;
+    --pink:#f55f9e; --purple:#a352cc;
+    --green:#3cbf7a; --yellow:#e0b23c; --red:#e35b5b; --blue:#5b9de3;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.25);
+    --radius:12px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0;font-family:Inter,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(1200px 600px at 80% -10%, #17181f 0%, var(--bg) 55%);color:var(--text);
+    -webkit-font-smoothing:antialiased;line-height:1.5;}
+
+  /* ---------- HEADER ---------- */
+  header{padding:16px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;
+    justify-content:space-between;flex-wrap:wrap;gap:14px;background:rgba(11,12,14,.7);backdrop-filter:blur(8px);
+    position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:14px;}
+  .logo-chip{background:#f5f5f7;border-radius:9px;padding:7px 11px;display:inline-flex;align-items:center;flex:none;box-shadow:0 1px 2px rgba(0,0,0,.35);}
+  .logo{height:26px;width:auto;display:block;}
+  header h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.01em;color:var(--text-strong);}
+  header .sub{color:var(--muted);font-size:12px;margin-top:1px;}
+  .header-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .toolbtns{display:flex;gap:6px;}
+  .iconbtn{background:var(--panel2);border:1px solid var(--border);color:var(--muted);border-radius:8px;
+    padding:7px 11px;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;}
+  .iconbtn:hover{color:var(--text-strong);border-color:var(--panel3);background:var(--panel3);}
+  #saveIndic{font-size:11px;color:var(--muted-dim);min-width:70px;text-align:right;transition:color .3s;}
+  #saveIndic.flash{color:var(--green);}
+
+  /* header mini gauge */
+  .hscore{display:flex;align-items:center;gap:10px;}
+  .hscore .ring{position:relative;width:46px;height:46px;flex:none;}
+  .hscore .ring .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:14px;font-weight:800;}
+  .hscore .meta{text-align:right;}
+  .hscore .meta .cat{font-size:12px;font-weight:600;}
+  .hscore .meta .verdict{font-size:11px;color:var(--muted);}
+
+  /* ---------- NAV ---------- */
+  nav{display:flex;gap:2px;padding:0 20px;border-bottom:1px solid var(--border);overflow-x:auto;
+    background:var(--panel);position:sticky;top:67px;z-index:15;}
+  nav button{background:none;border:none;color:var(--muted);padding:13px 15px;font-size:13px;cursor:pointer;
+    border-bottom:2px solid transparent;white-space:nowrap;font-family:inherit;display:flex;align-items:center;gap:8px;}
+  nav button.active{color:var(--orange);border-bottom-color:var(--orange);}
+  nav button:hover{color:var(--text-strong);}
+  nav .step-dot{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--border);font-size:9px;
+    display:inline-flex;align-items:center;justify-content:center;color:var(--muted-dim);font-weight:700;}
+  nav button.active .step-dot{border-color:var(--orange);color:var(--orange);}
+  nav .step-dot.done{background:var(--green);border-color:var(--green);color:#062012;}
+
+  main{max-width:1100px;margin:0 auto;padding:24px 20px 90px;}
+  .screen{display:none;}
+  .screen.active{display:block;}
+
+  /* ---------- CARDS ---------- */
+  .card{background:linear-gradient(180deg,var(--panel) 0%,#15171b 100%);border:1px solid var(--border);
+    border-radius:var(--radius);padding:20px 22px;margin-bottom:16px;box-shadow:var(--shadow);}
+  .card h2{margin:0 0 4px;font-size:14px;color:var(--text-strong);font-weight:700;display:flex;align-items:center;gap:8px;}
+  .card h2 .accent{width:4px;height:16px;border-radius:3px;background:linear-gradient(180deg,var(--orange),var(--pink));display:inline-block;}
+  .card h3{margin:18px 0 8px;font-size:13px;color:var(--text);border-top:1px solid var(--border-soft);padding-top:14px;font-weight:600;}
+  .card h3:first-of-type{border-top:none;padding-top:0;}
+  .card .hint{color:var(--muted);font-size:12px;margin:0 0 14px;}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  @media(max-width:760px){.grid,.grid3{grid-template-columns:1fr;}}
+
+  label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:5px;font-weight:500;}
+  input[type=text],input[type=number],input[type=date],textarea,select{
+    width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;transition:border-color .15s,box-shadow .15s;
+  }
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--orange);box-shadow:0 0 0 3px rgba(244,104,0,.15);}
+  textarea{resize:vertical;min-height:58px;}
+  .field{margin-bottom:12px;}
+  .field.missing input,.field.missing textarea,.field.missing select{border-color:var(--border);}
+  .field .req-tag{color:var(--yellow);font-size:10px;margin-left:6px;}
+
+  .checkrow{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border-soft);}
+  .checkrow:last-child{border-bottom:none;}
+  .checkrow input{margin-top:3px;accent-color:var(--orange);}
+  .checkrow .lbl{font-size:12.5px;}
+  .checkrow .pts{color:var(--muted);font-size:11px;}
+
+  .criterion{border-bottom:1px solid var(--border-soft);padding:12px 0;}
+  .criterion:last-child{border-bottom:none;}
+  .criterion .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;gap:10px;}
+  .criterion .name{font-size:13px;}
+  .criterion .max{font-size:11px;color:var(--muted);white-space:nowrap;}
+  .criterion .pts-live{color:var(--orange);font-weight:700;}
+  .levels{display:flex;gap:6px;flex-wrap:wrap;}
+  .levels button{flex:1;min-width:120px;background:var(--panel2);border:1px solid var(--border);color:var(--muted);
+    padding:8px;font-size:11.5px;border-radius:8px;cursor:pointer;text-align:center;font-family:inherit;transition:.12s;}
+  .levels button:hover{border-color:var(--panel3);color:var(--text);}
+  .levels button.sel{background:var(--orange-dim);border-color:var(--orange);color:var(--text-strong);font-weight:600;}
+  .levels button.sel.lv-absent{background:#3a1414;border-color:var(--red);}
+  .levels button.sel.lv-declared{background:#3a3414;border-color:var(--yellow);}
+  .levels button.sel.lv-proven{background:#153a25;border-color:var(--green);}
+
+  /* progress bar */
+  .bar{height:6px;border-radius:4px;background:var(--panel2);overflow:hidden;}
+  .bar > i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--orange),var(--orange-2));}
+
+  .pillbar{display:flex;gap:10px;margin:14px 0;flex-wrap:wrap;}
+  .pill{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;flex:1;min-width:130px;}
+  .pill .val{font-size:22px;font-weight:800;}
+  .pill .lab{font-size:11px;color:var(--muted);margin-bottom:8px;}
+
+  .btn{background:linear-gradient(180deg,var(--orange-2),var(--orange));color:#241300;border:none;border-radius:8px;
+    padding:10px 17px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;}
+  .btn:hover{filter:brightness(1.07);}
+  .btn.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--border);}
+  .btn.secondary:hover{background:var(--panel3);}
+  .btn.ghost{background:none;border:1px solid var(--border);color:var(--muted);}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  table th,table td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--border-soft);vertical-align:top;}
+  table th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
+  table tr:last-child td{border-bottom:none;}
+
+  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+  .badge.crit{background:#3a1414;color:var(--red);}
+  .badge.high{background:#3a2a14;color:#f0a13c;}
+  .badge.med{background:#3a3414;color:var(--yellow);}
+  .badge.low{background:#153a25;color:var(--green);}
+
+  .scorehero{display:flex;align-items:center;gap:26px;flex-wrap:wrap;}
+  .gauge{position:relative;width:150px;height:150px;flex:none;}
+  .gauge .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .gauge .center .n{font-size:42px;font-weight:800;line-height:1;}
+  .gauge .center .d{font-size:13px;color:var(--muted);font-weight:600;}
+  .catbadge{display:inline-block;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;}
+
+  .flag{border:1px solid var(--border);border-radius:10px;padding:13px 15px;margin-bottom:10px;background:var(--panel2);}
+  .flag.crit{border-left:3px solid var(--red);}
+  .flag.high{border-left:3px solid #f0a13c;}
+  .flag.med{border-left:3px solid var(--yellow);}
+  .flag.low{border-left:3px solid var(--green);}
+  .flag .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px;}
+  .flag .head .name{font-size:13px;font-weight:600;}
+  .flag p{margin:5px 0;font-size:12.5px;color:var(--muted);}
+  .flag p b{color:var(--text);font-weight:600;}
+
+  .qbank{padding-left:20px;}
+  .qbank li{margin-bottom:11px;font-size:13px;}
+  .qbank.clean{list-style:none;padding-left:0;}
+  .qbank.clean li{padding:10px 0;border-bottom:1px solid var(--border-soft);display:flex;gap:10px;}
+  .qbank.clean li:before{content:"→";color:var(--orange);font-weight:700;}
+
+  .planphase{margin-bottom:18px;}
+  .planphase h4{margin:0 0 8px;font-size:13px;color:var(--orange);display:flex;align-items:center;gap:8px;}
+  .planphase h4 .tag{background:var(--orange-dim);color:var(--orange-2);border-radius:6px;padding:2px 8px;font-size:10px;}
+  .plangrid{display:grid;grid-template-columns:2fr 1fr 1fr 2fr;gap:10px;font-size:12px;padding:9px 0;border-bottom:1px solid var(--border-soft);}
+  .plangrid.head{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;}
+  @media(max-width:640px){.plangrid{grid-template-columns:1fr;gap:3px;padding:12px 0;}.plangrid.head{display:none;}}
+
+  .empty{color:var(--muted);font-size:13px;padding:40px 0;text-align:center;}
+
+  /* matrix */
+  .matrix{position:relative;width:100%;height:440px;background:
+    linear-gradient(180deg,var(--panel2),#191b20);border:1px solid var(--border);border-radius:12px;margin-bottom:16px;}
+  .matrix .qlabel{position:absolute;font-size:11px;color:var(--muted-dim);padding:8px;max-width:45%;}
+  .dot{position:absolute;width:16px;height:16px;border-radius:50%;border:2px solid #0b0c0e;transform:translate(-50%,-50%);cursor:pointer;transition:.12s;}
+  .dot:hover{transform:translate(-50%,-50%) scale(1.35);z-index:5;}
+  .dot .dlabel{position:absolute;left:50%;top:-22px;transform:translateX(-50%);white-space:nowrap;font-size:10px;
+    background:var(--panel3);border:1px solid var(--border);padding:2px 6px;border-radius:6px;color:var(--text);opacity:0;pointer-events:none;transition:.12s;}
+  .dot:hover .dlabel{opacity:1;}
+
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
+  .conf{font-size:12px;padding:3px 10px;border-radius:20px;font-weight:600;}
+  .conf.high{background:#153a25;color:var(--green);}
+  .conf.mid{background:#3a3414;color:var(--yellow);}
+  .conf.low{background:#3a1414;color:var(--red);}
+  .exec p{font-size:13.5px;line-height:1.65;}
+
+  .rangewrap{display:flex;align-items:center;gap:10px;}
+  .rangewrap input[type=range]{flex:1;accent-color:var(--orange);}
+  .rangewrap span{font-size:12px;color:var(--muted);min-width:60px;text-align:right;}
+
+  .radar-wrap{display:flex;gap:20px;align-items:center;flex-wrap:wrap;justify-content:center;}
+  .legend{display:flex;flex-direction:column;gap:6px;font-size:12px;}
+  .legend .row{display:flex;align-items:center;gap:8px;}
+  .legend .sw{width:10px;height:10px;border-radius:3px;}
+
+  .navbtns{display:flex;gap:8px;flex-wrap:wrap;}
+
+  footer{text-align:center;color:var(--muted-dim);font-size:11px;padding:24px;}
+
+  /* provisional score */
+  .prov-tag{display:inline-block;background:#3a2414;color:var(--orange-2);border:1px dashed var(--orange);
+    border-radius:6px;padding:2px 8px;font-size:10.5px;font-weight:700;letter-spacing:.02em;}
+  .prov-note{background:#221a10;border:1px solid var(--orange-dim);border-left:3px solid var(--orange);
+    border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--orange-2);margin-top:12px;}
+
+  /* criterion note */
+  .critnote{margin-top:8px;display:flex;align-items:center;gap:8px;}
+  .critnote input{flex:1;background:var(--bg);border:1px dashed var(--border);font-size:11.5px;padding:6px 9px;border-radius:6px;color:var(--text);}
+  .critnote input:focus{border-style:solid;border-color:var(--orange);}
+  .critnote .ic{color:var(--muted-dim);font-size:12px;}
+  .critnote input.filled{border-color:var(--green);border-style:solid;}
+
+  /* suggestions */
+  .suggest{background:#1c2530;border:1px solid #2c3a49;border-radius:10px;padding:12px 14px;margin-bottom:14px;}
+  .suggest .st{font-size:12px;color:var(--blue);font-weight:700;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .schip{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #223040;font-size:12px;}
+  .schip:last-child{border-bottom:none;}
+  .schip .why{color:var(--muted);flex:1;}
+  .schip button{background:var(--panel3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:inherit;}
+  .schip button:hover{border-color:var(--blue);color:var(--blue);}
+  .schip.applied{opacity:.55;}
+
+  /* sparkline + compare */
+  .spark{vertical-align:middle;}
+  .cmp-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;}
+  .cmp-toolbar label{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text);
+    background:var(--panel2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;cursor:pointer;margin:0;}
+  .cmp-toolbar label input{accent-color:var(--orange);}
+  .cmp-legend{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;font-size:12px;margin-top:8px;}
+  .cmp-legend .row{display:flex;align-items:center;gap:6px;}
+  .cmp-legend .sw{width:14px;height:3px;border-radius:2px;}
+
+  /* print */
+  @media print{
+    header,nav,footer,.btn,.iconbtn,.navbtns,#saveIndic{display:none !important;}
+    body{background:#fff;color:#111;}
+    .card{background:#fff;border:1px solid #ccc;box-shadow:none;break-inside:avoid;}
+    .card h2,.criterion .pts-live{color:#000;}
+    .screen{display:block !important;}
+    main{max-width:100%;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="logo-chip"><img class="logo" src="assets/grafana-labs-logo.png" alt="Grafana Labs"></span>
+    <div>
+      <h1>Partner Assessment Engine</h1>
+      <div class="sub">Skill · Scale · Will · Strategic Fit — évaluation objective d'un partenaire Grafana Labs</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="toolbtns">
+      <button class="iconbtn" onclick="newEvaluation()" title="Nouvelle évaluation">＋ Nouveau</button>
+      <button class="iconbtn" onclick="exportJSON()" title="Exporter en JSON">↧ Export JSON</button>
+      <button class="iconbtn" onclick="document.getElementById('importFile').click()" title="Importer un JSON">↥ Importer</button>
+      <button class="iconbtn" onclick="window.print()" title="Imprimer / PDF">⎙ PDF</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importJSON(event)">
+    </div>
+    <span id="saveIndic">Prêt</span>
+    <div id="headerScore"></div>
+  </div>
+</header>
+
+<nav id="nav"></nav>
+
+<main id="main"></main>
+
+<footer>Prototype interne — scores calculés localement dans votre navigateur (aucune donnée envoyée). Sauvegarde automatique via localStorage. Export JSON pour backup/partage.</footer>
+
+<script>
+/* ============================== DATA MODEL ============================== */
+
+const SCREENS = [
+  {id:'profile', label:'Profil', n:1},
+  {id:'assessment', label:'Évaluation', n:2},
+  {id:'decision', label:'Décision', n:3},
+  {id:'meeting', label:'Prép. Meeting', n:4},
+  {id:'plan', label:"Plan d'activation", n:5},
+  {id:'portfolio', label:'Portfolio', n:6},
+];
+
+const PROFILE_FIELDS = [
+  {k:'partnerName', l:'Nom du partenaire', t:'text', req:true},
+  {k:'country', l:'Pays / zones couvertes', t:'text'},
+  {k:'partnerType', l:'Type de partenaire', t:'select', opts:['System Integrator','Reseller','MSP','MSSP','Cloud Service Provider','Consulting Partner','Technology Partner','OEM','Referral Partner','Distributor']},
+  {k:'employees', l:'Nombre d\'employés', t:'text'},
+  {k:'revenue', l:'Chiffre d\'affaires estimé', t:'text'},
+  {k:'sectors', l:'Secteurs couverts', t:'text'},
+  {k:'enterpriseAccess', l:'Accès comptes Enterprise / Mid-Market (exemples)', t:'textarea'},
+  {k:'dominantMotion', l:'Motion commerciale dominante', t:'select', opts:['Resale','Referral','Services','Managed services','Cloud marketplace','Co-sell']},
+  {k:'competitors', l:'Concurrents actuellement vendus', t:'checklist', opts:['Datadog','Dynatrace','Splunk','Elastic','New Relic','AppDynamics','Open-source only','Autres']},
+  {k:'execSponsor', l:'Sponsor exécutif (nom + niveau d\'engagement)', t:'text', req:true},
+  {k:'salesChampion', l:'Champion commercial', t:'text'},
+  {k:'techChampion', l:'Champion technique', t:'text'},
+  {k:'salesDedicated', l:'Ressources commerciales dédiées (nb personnes)', t:'text'},
+  {k:'techDedicated', l:'Ressources techniques dédiées (nb personnes)', t:'text'},
+  {k:'peopleToTrain', l:'Nombre de personnes à certifier', t:'text'},
+  {k:'namedAccount1', l:'Compte nommé #1', t:'text', req:true},
+  {k:'namedAccount2', l:'Compte nommé #2', t:'text'},
+  {k:'namedAccount3', l:'Compte nommé #3', t:'text'},
+  {k:'existingOpps', l:'Opportunités existantes', t:'textarea'},
+  {k:'pipelineTarget', l:'Objectif de pipeline sur 12 mois', t:'text'},
+  {k:'actionSinceLast', l:'Action déjà exécutée depuis le dernier échange', t:'textarea'},
+  {k:'nextAction', l:'Prochaine action', t:'text'},
+  {k:'nextActionDate', l:'Date de la prochaine action', t:'date'},
+  {k:'meetingNotes', l:'Notes qualitatives / compte rendu du dernier meeting', t:'textarea'},
+];
+
+const LEVELS = [
+  {k:'unknown', l:'Non renseigné', mult:null},
+  {k:'absent',  l:'Absent', mult:0},
+  {k:'declared',l:'Déclaré sans preuve', mult:0.5},
+  {k:'proven',  l:'Confirmé avec preuve', mult:1},
+];
+const LEVELS_BINARY = [
+  {k:'unknown', l:'Non renseigné', mult:null},
+  {k:'absent',  l:'Non', mult:0},
+  {k:'proven',  l:'Oui, confirmé', mult:1},
+];
+
+const PILLARS = {
+  skill: {
+    label:'Skill', max:30, weightPct:30, color:'#f46800',
+    criteria:[
+      {k:'obs_expertise', l:'Expertise observabilité', max:6},
+      {k:'grafana_stack', l:'Compétences Grafana, Prometheus, Loki, Tempo, Mimir, Alloy, OpenTelemetry', max:6},
+      {k:'delivery', l:'Capacité de delivery, migration, POC et services professionnels', max:5},
+      {k:'cloud_k8s', l:'Compétences cloud et Kubernetes', max:4},
+      {k:'commercial_positioning', l:'Capacité commerciale à positionner une plateforme d\'observabilité', max:4},
+      {k:'client_refs', l:'Références clients démontrables', max:3},
+      {k:'offer_building', l:'Capacité à construire une offre ou un managed service', max:2},
+    ]
+  },
+  scale: {
+    label:'Scale', max:25, weightPct:25, color:'#f55f9e',
+    criteria:[
+      {k:'geo_coverage', l:'Couverture géographique pertinente', max:4},
+      {k:'enterprise_access', l:'Accès aux comptes Enterprise et Mid-Market', max:5},
+      {k:'mobilizable_team', l:'Nombre de vendeurs et consultants mobilisables', max:4},
+      {k:'verticals', l:'Présence dans les verticales prioritaires', max:4},
+      {k:'marketing_capacity', l:'Capacité marketing et génération de demande', max:3},
+      {k:'recurring_services', l:'Capacité à vendre des services récurrents', max:3},
+      {k:'hyperscaler_rel', l:'Relations avec AWS, Azure ou GCP', max:2},
+    ]
+  },
+  will: {
+    label:'Will', max:30, weightPct:30, color:'#a352cc',
+    criteria:[
+      {k:'exec_sponsor', l:'Sponsor exécutif identifié et engagé', max:5},
+      {k:'sales_resources', l:'Ressources commerciales dédiées', max:4},
+      {k:'tech_resources', l:'Ressources techniques dédiées', max:4},
+      {k:'training_commitment', l:'Engagement sur la formation et les certifications', max:4},
+      {k:'named_accounts', l:'Comptes nommés ou opportunités concrètes', max:5},
+      {k:'business_plan', l:'Business plan et objectifs chiffrés', max:3},
+      {k:'marketing_commitment', l:'Engagement marketing', max:2},
+      {k:'execution_quality', l:'Qualité d\'exécution et respect des actions', max:3},
+    ]
+  },
+  fit: {
+    label:'Strategic Fit', max:15, weightPct:15, color:'#5b9de3',
+    criteria:[
+      {k:'icp_access', l:'Accès aux profils de clients correspondant à l\'ICP Grafana', max:4},
+      {k:'cloud_native_presence', l:'Présence sur environnements cloud, Kubernetes, microservices, DevOps', max:3},
+      {k:'displacement_capacity', l:'Capacité à identifier des opportunités de remplacement (Datadog, Dynatrace, Splunk, Elastic, New Relic)', max:3},
+      {k:'services_differentiation', l:'Potentiel de différenciation par les services', max:2},
+      {k:'coverage_complementarity', l:'Complémentarité avec la couverture Grafana existante', max:2},
+      {k:'no_conflict', l:'Absence de conflit stratégique majeur', max:1},
+    ]
+  }
+};
+
+const PENALTIES = [
+  {k:'no_sponsor', l:'Aucun sponsor ou owner clairement identifié', min:-5, max:-5, sev:'high'},
+  {k:'no_named_accounts', l:'Aucun compte nommé après deux meetings', min:-5, max:-5, sev:'high'},
+  {k:'no_training', l:'Aucun engagement de formation', min:-4, max:-4, sev:'med'},
+  {k:'no_followup', l:'Aucun suivi des actions convenues', min:-5, max:-5, sev:'high'},
+  {k:'competitor_dependency', l:'Dépendance forte à un concurrent stratégique', min:-8, max:-3, sev:'high'},
+  {k:'no_pipeline_sharing', l:'Refus de partager le pipeline', min:-4, max:-4, sev:'med'},
+  {k:'discount_focus', l:'Intérêt limité au discount ou à la marge', min:-5, max:-5, sev:'med'},
+  {k:'exclusivity_demand', l:'Demande d\'exclusivité sans investissement démontré', min:-8, max:-8, sev:'crit'},
+  {k:'no_capability_no_will', l:'Pas de capacité technique et pas de volonté d\'en créer', min:-8, max:-8, sev:'crit'},
+  {k:'no_client_access', l:'Aucun accès client démontré', min:-6, max:-6, sev:'high'},
+  {k:'inconsistent_info', l:'Informations commerciales incohérentes', min:-5, max:-5, sev:'med'},
+  {k:'legal_risk', l:'Risque juridique, éthique, financier ou réputationnel', min:-25, max:-5, sev:'crit', disqualifying:true},
+  {k:'fulfillment_only', l:'Partenaire recherchant uniquement un mécanisme de fulfillment', min:-4, max:-4, sev:'med'},
+  {k:'too_many_competitors', l:'Trop grand nombre de vendors concurrents activement poussés', min:-7, max:-3, sev:'med'},
+  {k:'low_responsiveness', l:'Faible réactivité répétée', min:-3, max:-3, sev:'low'},
+  {k:'no_action_60d', l:'Absence d\'action concrète dans les 60 jours', min:-5, max:-5, sev:'high'},
+];
+
+const BONUS_SIGNALS = [
+  'Forte spécialisation Kubernetes, Prometheus, OpenTelemetry ou observabilité',
+  'Fondateurs ou consultants reconnus techniquement',
+  'Accès privilégié à une niche stratégique',
+  'Offre de managed services en construction',
+  'Capacité à générer rapidement des PIO (Partner Identified Opportunities)',
+  'Relation forte avec un hyperscaler',
+  'Capacité de migration depuis Datadog, Elastic, Splunk ou Dynatrace',
+  'Forte culture open source',
+  'Croissance rapide',
+  'Sponsor exécutif personnellement engagé',
+  'Présence dans un marché sous-couvert',
+  'Première opportunité déjà identifiée',
+  'Expertise technique supérieure à la taille de l\'entreprise',
+];
+
+const QUESTION_BANK = [
+  {k:'ressources', q:(p)=>`Quel commercial et quel technique chez ${nm(p)} seront explicitement affectés au pipeline Grafana, et à quel niveau de temps ?`},
+  {k:'competences', q:(p)=>`Quelles certifications, projets ou consultants Grafana/Prometheus/OpenTelemetry pouvez-vous nous montrer aujourd'hui (noms, références clients) ?`},
+  {k:'sponsor', q:(p)=>`Qui, côté direction de ${nm(p)}, est prêt à sponsoriser personnellement ce partenariat et à participer aux revues trimestrielles ?`},
+  {k:'comptes', q:(p)=>`Quels sont les trois comptes sur lesquels ${nm(p)} pourrait introduire Grafana dans les 90 prochains jours ?`},
+  {k:'pipeline', q:(p)=>`Quel objectif de pipeline êtes-vous prêt à inscrire dans un business plan commun avec Grafana sur 12 mois ?`},
+  {k:'formation', q:(p)=>`Combien de consultants pourriez-vous inscrire à l'enablement Grafana dans les six prochains mois, et sur quel calendrier ?`},
+  {k:'modele', q:(p)=>`Quelle offre de services (workshop, migration, managed service) pourriez-vous facturer autour de Grafana ?`},
+  {k:'concurrence', q:(p)=>`Sur quels clients voyez-vous actuellement une pression de coûts liée à Datadog, Elastic, Splunk, Dynatrace ou New Relic ?`},
+  {k:'delivery', q:(p)=>`Combien de consultants pourraient être mobilisés sur un POC ou une migration Grafana ce trimestre ?`},
+  {k:'action', q:(p)=>`Quelle action concrète êtes-vous prêt à exécuter dans les 30 prochains jours, avec quelle date précise ?`},
+];
+
+/* ============================== STATE ============================== */
+
+let state = loadState() || freshState();
+let currentScreen = 'profile';
+let compareSel = [];
+const COMPARE_COLORS = ['#f46800','#5b9de3','#a352cc'];
+
+function freshState(){
+  let s = {profile:{}, scores:{}, notes:{}, penalties:{}, penaltySeverity:{}, bonuses:{}, meta:{createdAt:new Date().toISOString()}};
+  Object.values(PILLARS).forEach(p=>p.criteria.forEach(c=>{s.scores[c.k]='unknown';}));
+  return s;
+}
+
+function loadState(){
+  try{ const raw = localStorage.getItem('gpae_current'); return raw?JSON.parse(raw):null; }catch(e){return null;}
+}
+function saveState(){
+  state.meta = state.meta||{}; state.meta.savedAt = new Date().toISOString();
+  localStorage.setItem('gpae_current', JSON.stringify(state));
+  flashSaved();
+}
+let saveTimer=null;
+function flashSaved(){
+  const el=document.getElementById('saveIndic'); if(!el) return;
+  el.textContent='Sauvegardé ✓'; el.classList.add('flash');
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{el.classList.remove('flash');el.textContent='Sauvegardé';},1400);
+}
+
+function loadPortfolio(){
+  try{ const raw = localStorage.getItem('gpae_portfolio'); return raw?JSON.parse(raw):[]; }catch(e){return [];}
+}
+function savePortfolio(list){ localStorage.setItem('gpae_portfolio', JSON.stringify(list)); }
+
+function nm(p){ return (p && p.profile && p.profile.partnerName) ? p.profile.partnerName : 'ce partenaire'; }
+
+/* ---- top toolbar actions ---- */
+function newEvaluation(){
+  if(!confirm('Démarrer une nouvelle évaluation ? L\'évaluation en cours sera effacée (pensez à l\'enregistrer dans le portfolio ou à l\'exporter avant).')) return;
+  state = freshState(); currentScreen='profile'; saveState(); render();
+}
+function exportJSON(){
+  const data = JSON.stringify(state,null,2);
+  const blob = new Blob([data],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const name = (state.profile.partnerName||'partner').toLowerCase().replace(/[^a-z0-9]+/g,'-');
+  a.download = `gpae-${name}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+}
+function importJSON(e){
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const obj = JSON.parse(reader.result);
+      if(!obj.scores||!obj.profile) throw new Error('format');
+      state = Object.assign(freshState(), obj);
+      currentScreen='decision'; saveState(); render();
+    }catch(err){ alert('Fichier invalide : '+err.message); }
+  };
+  reader.readAsText(file);
+  e.target.value='';
+}
+
+/* ============================== SCORING ENGINE ============================== */
+
+function criterionPoints(state, key, max){
+  const level = state.scores[key];
+  if(!level || level==='unknown') return 0;
+  const lv = (LEVELS.concat(LEVELS_BINARY)).find(l=>l.k===level);
+  if(!lv || lv.mult===null) return 0;
+  return Math.round(max*lv.mult*10)/10;
+}
+function pillarScore(state, pillarKey){
+  let total=0;
+  PILLARS[pillarKey].criteria.forEach(c=>{ total += criterionPoints(state,c.k,c.max); });
+  return Math.round(total*10)/10;
+}
+function pillarFillRatio(state, pillarKey){
+  const pillar = PILLARS[pillarKey];
+  const filled = pillar.criteria.filter(c=>state.scores[c.k] && state.scores[c.k]!=='unknown').length;
+  return filled/pillar.criteria.length;
+}
+function overallFillRatio(state){
+  let total=0, filled=0;
+  Object.keys(PILLARS).forEach(pk=>{
+    PILLARS[pk].criteria.forEach(c=>{
+      total++;
+      if(state.scores[c.k] && state.scores[c.k]!=='unknown') filled++;
+    });
+  });
+  return total? filled/total : 0;
+}
+function profileFillRatio(state){
+  const total = PROFILE_FIELDS.length;
+  let filled=0;
+  PROFILE_FIELDS.forEach(f=>{
+    const v = state.profile[f.k];
+    if(Array.isArray(v)? v.length : (v!=null && String(v).trim()!=='')) filled++;
+  });
+  return filled/total;
+}
+function penaltyTotal(state){
+  let total=0;
+  Object.keys(state.penalties||{}).forEach(k=>{
+    if(!state.penalties[k]) return;
+    const def = PENALTIES.find(p=>p.k===k);
+    if(!def) return;
+    if(def.disqualifying){ total += def.min; return; }
+    const sev = state.penaltySeverity[k] || 'max';
+    let val;
+    if(def.min===def.max) val = def.min;
+    else { if(sev==='min') val = def.max; else if(sev==='mid') val = Math.round((def.min+def.max)/2); else val = def.min; }
+    total += val;
+  });
+  return total;
+}
+function bonusTotal(state){
+  const checked = Object.keys(state.bonuses||{}).filter(k=>state.bonuses[k]).length;
+  if(checked<2) return 0;
+  return Math.min(10, checked*2);
+}
+function isDisqualified(state){ return !!(state.penalties && state.penalties['legal_risk']); }
+
+function computeAll(state){
+  const skill = pillarScore(state,'skill');
+  const scale = pillarScore(state,'scale');
+  const will = pillarScore(state,'will');
+  const fit = pillarScore(state,'fit');
+  const base = skill+scale+will+fit;
+  const bonus = bonusTotal(state);
+  const penalty = penaltyTotal(state);
+  let final = base + bonus + penalty;
+  if(final<0) final=0;
+  if(final>100) final=100;
+  if(isDisqualified(state)) final = Math.min(final, 15);
+  const fillRatio = overallFillRatio(state);
+  let confidence = fillRatio>0.8?'high':(fillRatio>=0.5?'mid':'low');
+  const provisional = fillRatio < 0.5;
+  return {skill,scale,will,fit,base,bonus,penalty,final,fillRatio,confidence,provisional};
+}
+
+function classify(score){
+  if(score>=85) return {cat:'Strategic Growth Partner', priority:'P1', tier:'Tier stratégique / Elite', verdict:'Invest Now'};
+  if(score>=70) return {cat:'High-Potential Partner', priority:'P1 (conditionnel)', tier:'Tier avancé', verdict:'Activate with Conditions'};
+  if(score>=55) return {cat:'Incubate and Validate', priority:'P2', tier:'Tier registré', verdict:'Incubate'};
+  if(score>=40) return {cat:'Opportunistic / Referral Only', priority:'P3', tier:'Referral', verdict:'Referral Only'};
+  return {cat:'Do Not Prioritize', priority:'Do not prioritize', tier:'—', verdict:'Do Not Prioritize'};
+}
+
+/* ============================== SVG WIDGETS ============================== */
+
+function gaugeSVG(percent, color, size){
+  size = size||150;
+  const r = size/2 - 10;
+  const c = 2*Math.PI*r;
+  const off = c*(1-percent/100);
+  const cx = size/2;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="#2a2d35" stroke-width="9"/>
+    <circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="${color}" stroke-width="9" stroke-linecap="round"
+      stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 ${cx} ${cx})"/>
+  </svg>`;
+}
+
+function radarSVG(vals, size){
+  // vals: array of {label, ratio(0-1), color}
+  size = size||260;
+  const cx=size/2, cy=size/2, R=size/2-38;
+  const n=vals.length;
+  const angle=i=> (Math.PI*2*i/n) - Math.PI/2;
+  const pt=(i,r)=>[cx+Math.cos(angle(i))*r, cy+Math.sin(angle(i))*r];
+  let grid='';
+  [0.25,0.5,0.75,1].forEach(g=>{
+    let p='';
+    for(let i=0;i<n;i++){const [x,y]=pt(i,R*g);p+=`${x.toFixed(1)},${y.toFixed(1)} `;}
+    grid+=`<polygon points="${p}" fill="none" stroke="#2a2d35" stroke-width="1"/>`;
+  });
+  let axes='',labels='';
+  for(let i=0;i<n;i++){
+    const [x,y]=pt(i,R);
+    axes+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#2a2d35" stroke-width="1"/>`;
+    const [lx,ly]=pt(i,R+20);
+    const anchor = Math.abs(lx-cx)<8?'middle':(lx>cx?'start':'end');
+    labels+=`<text x="${lx}" y="${ly+4}" fill="#8e8fa0" font-size="11" text-anchor="${anchor}">${vals[i].label}</text>`;
+  }
+  let poly='';
+  for(let i=0;i<n;i++){const [x,y]=pt(i,R*Math.max(0.02,vals[i].ratio));poly+=`${x.toFixed(1)},${y.toFixed(1)} `;}
+  let dots='';
+  for(let i=0;i<n;i++){const [x,y]=pt(i,R*Math.max(0.02,vals[i].ratio));dots+=`<circle cx="${x}" cy="${y}" r="3.5" fill="${vals[i].color}"/>`;}
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    ${grid}${axes}
+    <polygon points="${poly}" fill="rgba(244,104,0,.18)" stroke="#f46800" stroke-width="2"/>
+    ${dots}${labels}
+  </svg>`;
+}
+
+function sparklineSVG(points, w, h, color){
+  w=w||90; h=h||24; color=color||'#f46800';
+  if(!points || points.length<2) return `<span style="color:var(--muted-dim);font-size:11px">1 version</span>`;
+  const vals = points.map(p=>p.final);
+  const min=Math.min(...vals,0), max=Math.max(...vals,100);
+  const rng = (max-min)||1;
+  const step = w/(points.length-1);
+  const y = v => h-2 - ((v-min)/rng)*(h-4);
+  let d='';
+  points.forEach((p,i)=>{ d += (i?'L':'M')+(i*step).toFixed(1)+','+y(p.final).toFixed(1)+' '; });
+  const last = points[points.length-1], lx=(points.length-1)*step, ly=y(last.final);
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <path d="${d}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="2.4" fill="${color}"/>
+  </svg>`;
+}
+
+function radarMultiSVG(axes, series, size){
+  size = size||300;
+  const cx=size/2, cy=size/2, R=size/2-42, n=axes.length;
+  const angle=i=> (Math.PI*2*i/n) - Math.PI/2;
+  const pt=(i,r)=>[cx+Math.cos(angle(i))*r, cy+Math.sin(angle(i))*r];
+  let grid='';
+  [0.25,0.5,0.75,1].forEach(g=>{ let p=''; for(let i=0;i<n;i++){const[x,y]=pt(i,R*g);p+=`${x.toFixed(1)},${y.toFixed(1)} `;} grid+=`<polygon points="${p}" fill="none" stroke="#2a2d35" stroke-width="1"/>`; });
+  let ax='',labels='';
+  for(let i=0;i<n;i++){ const[x,y]=pt(i,R); ax+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#2a2d35" stroke-width="1"/>`;
+    const[lx,ly]=pt(i,R+22); const anchor=Math.abs(lx-cx)<8?'middle':(lx>cx?'start':'end');
+    labels+=`<text x="${lx}" y="${ly+4}" fill="#8e8fa0" font-size="11" text-anchor="${anchor}">${axes[i]}</text>`; }
+  let polys='';
+  series.forEach(s=>{ let poly=''; for(let i=0;i<n;i++){const[x,y]=pt(i,R*Math.max(0.02,s.ratios[i]));poly+=`${x.toFixed(1)},${y.toFixed(1)} `;}
+    polys+=`<polygon points="${poly}" fill="${s.color}22" stroke="${s.color}" stroke-width="2"/>`; });
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${grid}${ax}${polys}${labels}</svg>`;
+}
+
+/* ============================== RENDER: NAV / HEADER ============================== */
+
+function renderNav(){
+  const nav = document.getElementById('nav');
+  const pf = profileFillRatio(state), af = overallFillRatio(state);
+  nav.innerHTML='';
+  SCREENS.forEach(s=>{
+    const b = document.createElement('button');
+    b.className = s.id===currentScreen?'active':'';
+    let done=false;
+    if(s.id==='profile') done = pf>=0.99;
+    else if(s.id==='assessment') done = af>=0.99;
+    b.innerHTML = `<span class="step-dot ${done?'done':''}">${done?'✓':s.n}</span>${s.label}`;
+    b.onclick = ()=>{ currentScreen=s.id; render(); window.scrollTo({top:0}); };
+    nav.appendChild(b);
+  });
+}
+
+function renderHeaderScore(){
+  const c = computeAll(state);
+  const cls = classify(c.final);
+  const col = catColor(cls.cat);
+  document.getElementById('headerScore').innerHTML =
+    `<div class="hscore">
+      <div class="ring">${gaugeSVG(c.final, col, 46)}<div class="num" style="color:${col}">${c.final.toFixed(0)}</div></div>
+      <div class="meta"><div class="cat" style="color:${col}">${cls.cat}${c.provisional?' <span class="prov-tag">provisoire</span>':''}</div><div class="verdict">${cls.verdict}</div></div>
+    </div>`;
+}
+
+/* ============================== SCREEN 1 - PROFILE ============================== */
+
+function renderProfile(){
+  const pf = Math.round(profileFillRatio(state)*100);
+  let html = `<div class="card"><h2><span class="accent"></span>Profil du partenaire</h2>
+  <p class="hint">24 champs structurants. Les champs vides sont signalés comme information manquante et diminuent le score de confiance. Les champs <span style="color:var(--yellow)">clés</span> pèsent sur la décision.</p>
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><div class="bar" style="flex:1"><i style="width:${pf}%"></i></div><span style="font-size:12px;color:var(--muted)">${pf}% complété</span></div>
+  <div class="grid">`;
+  PROFILE_FIELDS.forEach(f=>{
+    const val = state.profile[f.k]||'';
+    const empty = Array.isArray(val)? !val.length : String(val).trim()==='';
+    html += `<div class="field ${f.req&&empty?'missing':''}" style="${f.t==='textarea'?'grid-column:1/-1':''}"><label>${f.l}${f.req?'<span class="req-tag">clé</span>':''}</label>`;
+    if(f.t==='textarea'){
+      html += `<textarea data-k="${f.k}" onchange="onProfileChange(event)">${escapeHtml(val)}</textarea>`;
+    } else if(f.t==='select'){
+      html += `<select data-k="${f.k}" onchange="onProfileChange(event)"><option value="">—</option>${f.opts.map(o=>`<option ${val===o?'selected':''}>${o}</option>`).join('')}</select>`;
+    } else if(f.t==='checklist'){
+      const arr = Array.isArray(val)?val:[];
+      html += `<div>${f.opts.map(o=>`<label style="display:inline-flex;align-items:center;gap:5px;margin:0 12px 8px 0;font-size:12px;color:var(--text)"><input type="checkbox" data-k="${f.k}" value="${o}" ${arr.includes(o)?'checked':''} onchange="onChecklistChange(event)"> ${o}</label>`).join('')}</div>`;
+    } else {
+      html += `<input type="${f.t}" data-k="${f.k}" value="${escapeHtml(val)}" onchange="onProfileChange(event)">`;
+    }
+    html += `</div>`;
+  });
+  html += `</div></div>
+  <div class="card"><div class="navbtns"><button class="btn" onclick="goTo('assessment')">Continuer vers l'évaluation →</button></div></div>`;
+  document.getElementById('main').innerHTML = html;
+}
+
+function escapeHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function onProfileChange(e){ state.profile[e.target.dataset.k] = e.target.value; saveState(); renderHeaderScore(); renderNav(); }
+function onChecklistChange(e){
+  const k = e.target.dataset.k;
+  let arr = Array.isArray(state.profile[k])?state.profile[k]:[];
+  if(e.target.checked) arr.push(e.target.value); else arr = arr.filter(v=>v!==e.target.value);
+  state.profile[k]=arr; saveState();
+}
+function goTo(id){ currentScreen=id; render(); window.scrollTo({top:0}); }
+
+/* ============================== SCREEN 2 - ASSESSMENT ============================== */
+
+function renderPillarCard(pillarKey){
+  const pillar = PILLARS[pillarKey];
+  const score = pillarScore(state,pillarKey);
+  const pct = Math.round(score/pillar.max*100);
+  let html = `<div class="card"><h2><span class="accent" style="background:${pillar.color}"></span>${pillar.label}
+    <span style="color:var(--muted);font-weight:500;font-size:12px;margin-left:auto">${score}/${pillar.max} pts · poids ${pillar.weightPct}%</span></h2>
+    <div class="bar" style="margin:8px 0 4px"><i style="width:${pct}%;background:${pillar.color}"></i></div>`;
+  pillar.criteria.forEach(c=>{
+    const isBinary = c.max===1;
+    const levels = isBinary?LEVELS_BINARY:LEVELS;
+    const cur = state.scores[c.k]||'unknown';
+    const pts = criterionPoints(state,c.k,c.max);
+    const note = (state.notes && state.notes[c.k]) || '';
+    html += `<div class="criterion"><div class="top"><span class="name">${c.l}</span>
+      <span class="max">${cur!=='unknown'?`<span class="pts-live">${pts}</span> / `:''}${c.max} pts</span></div>
+      <div class="levels">`;
+    levels.forEach(lv=>{
+      html += `<button class="${cur===lv.k?'sel lv-'+lv.k:''}" onclick="setScore('${c.k}','${lv.k}')">${lv.l}</button>`;
+    });
+    html += `</div>
+      <div class="critnote"><span class="ic">preuve</span><input type="text" value="${escapeHtml(note)}" placeholder="Preuve, lien, certification, référence client…" class="${note?'filled':''}" oninput="setNote('${c.k}', this.value)"></div>
+    </div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function renderAssessment(){
+  let html = '';
+  Object.keys(PILLARS).forEach(pk=> html += renderPillarCard(pk));
+
+  html += `<div class="card"><h2><span class="accent" style="background:var(--red)"></span>Pénalités / Red Flags</h2>
+  <p class="hint">Cochez uniquement les signaux confirmés par des faits. Score final jamais négatif ; le red flag « risque juridique » plafonne le score final à 15.</p>`;
+
+  const suggestions = suggestPenalties(state);
+  if(suggestions.length){
+    html += `<div class="suggest"><div class="st"><span>Suggestions basées sur le profil (${suggestions.length})</span><button onclick="applyAllSuggestions()">Tout appliquer</button></div>
+    ${suggestions.map(s=>`<div class="schip"><b>${PENALTIES.find(p=>p.k===s.key).l}</b><span class="why">${s.why}</span><button onclick="applySuggestion('${s.key}')">Cocher</button></div>`).join('')}</div>`;
+  }
+
+  PENALTIES.forEach(p=>{
+    const checked = !!(state.penalties && state.penalties[p.k]);
+    html += `<div class="checkrow"><input type="checkbox" ${checked?'checked':''} onchange="setPenalty('${p.k}', this.checked)">
+      <div style="flex:1"><div class="lbl">${p.l} ${checked?`<span class="badge ${p.sev}" style="margin-left:6px">${sevText(p.sev)}</span>`:''}</div>
+      <div class="pts">${p.min===p.max? p.min+' pts' : p.min+' à '+p.max+' pts'}${p.disqualifying?' · disqualifiant':''}</div>
+      ${(checked && p.min!==p.max && !p.disqualifying) ? `<div class="rangewrap" style="margin-top:6px"><input type="range" min="0" max="2" step="1" value="${sevIndex(state.penaltySeverity[p.k])}" oninput="setPenaltySeverity('${p.k}', this.value)"><span>${sevLabel(state.penaltySeverity[p.k])} (${penaltyValueFor(p, state.penaltySeverity[p.k])})</span></div>` : ''}
+      </div></div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="card"><h2><span class="accent" style="background:var(--green)"></span>Bonus « Pépite »</h2>
+  <p class="hint">Jusqu'à 10 points bonus, appliqués seulement si au moins deux signaux concrets sont cochés.</p>`;
+  BONUS_SIGNALS.forEach((sig,i)=>{
+    const k = 'b'+i;
+    const checked = !!(state.bonuses && state.bonuses[k]);
+    html += `<div class="checkrow"><input type="checkbox" ${checked?'checked':''} onchange="setBonus('${k}', this.checked)"><div class="lbl">${sig}</div></div>`;
+  });
+  const bt = bonusTotal(state);
+  html += `<p class="hint" style="margin-top:10px">Bonus appliqué : <b style="color:var(--orange)">${bt} pts</b> (${Object.values(state.bonuses||{}).filter(Boolean).length} signaux cochés)</p></div>`;
+
+  const c = computeAll(state);
+  html += `<div class="card"><h2><span class="accent"></span>Score en direct</h2>
+    <div class="pillbar">
+      ${scorePill('Skill',c.skill,30,PILLARS.skill.color)}
+      ${scorePill('Scale',c.scale,25,PILLARS.scale.color)}
+      ${scorePill('Will',c.will,30,PILLARS.will.color)}
+      ${scorePill('Strategic Fit',c.fit,15,PILLARS.fit.color)}
+      <div class="pill"><div class="lab">Bonus</div><div class="val" style="color:var(--green)">${c.bonus>0?'+':''}${c.bonus}</div></div>
+      <div class="pill"><div class="lab">Pénalités</div><div class="val" style="color:var(--red)">${c.penalty}</div></div>
+    </div>
+    <div class="navbtns"><button class="btn" onclick="goTo('decision')">Voir la décision →</button></div>
+  </div>`;
+
+  document.getElementById('main').innerHTML = html;
+}
+
+function scorePill(lab,val,max,col){
+  const pct=Math.round(val/max*100);
+  return `<div class="pill"><div class="lab">${lab} /${max}</div><div class="val" style="color:${col}">${val}</div>
+    <div class="bar" style="margin-top:6px"><i style="width:${pct}%;background:${col}"></i></div></div>`;
+}
+function sevIndex(sev){ return sev==='min'?0:(sev==='mid'?1:2); }
+function sevLabel(sev){ return sev==='min'?'Faible':(sev==='mid'?'Moyen':'Fort'); }
+function penaltyValueFor(def,sev){
+  if(def.min===def.max) return def.min;
+  if(sev==='min') return def.max;
+  if(sev==='mid') return Math.round((def.min+def.max)/2);
+  return def.min;
+}
+function setScore(key, level){ state.scores[key]=level; saveState(); renderAssessment(); renderHeaderScore(); renderNav(); }
+function setPenalty(key, checked){
+  state.penalties = state.penalties||{};
+  state.penalties[key]=checked;
+  if(checked && !state.penaltySeverity[key]) state.penaltySeverity[key]='max';
+  saveState(); renderAssessment(); renderHeaderScore();
+}
+function setPenaltySeverity(key, idx){
+  state.penaltySeverity = state.penaltySeverity||{};
+  state.penaltySeverity[key] = idx=='0'?'min':(idx=='1'?'mid':'max');
+  saveState(); renderAssessment(); renderHeaderScore();
+}
+function setBonus(key, checked){ state.bonuses = state.bonuses||{}; state.bonuses[key]=checked; saveState(); renderAssessment(); renderHeaderScore(); }
+function setNote(key, val){ state.notes = state.notes||{}; if(val) state.notes[key]=val; else delete state.notes[key]; saveState(); }
+function suggestPenalties(state){
+  const p = state.profile||{}, out=[];
+  const has = v => v!=null && String(v).trim()!=='';
+  const named = [p.namedAccount1,p.namedAccount2,p.namedAccount3].filter(has);
+  const comp = (Array.isArray(p.competitors)?p.competitors:[]).filter(x=>x!=='Open-source only' && x!=='Autres');
+  const checked = k => state.penalties && state.penalties[k];
+  const add = (k,why)=>{ if(!checked(k)) out.push({key:k,why}); };
+  if(!has(p.execSponsor)) add('no_sponsor','Aucun sponsor exécutif renseigné dans le profil.');
+  if(named.length===0) add('no_named_accounts','Aucun compte nommé renseigné dans le profil.');
+  if(!has(p.peopleToTrain)) add('no_training','Nombre de personnes à certifier non renseigné.');
+  if(comp.length>=4) add('too_many_competitors', comp.length+' vendors concurrents déclarés vendus.');
+  if(!has(p.nextAction) && !has(p.actionSinceLast)) add('no_action_60d','Aucune action récente ni prochaine action renseignée.');
+  if(!has(p.pipelineTarget) && !has(p.existingOpps)) add('no_pipeline_sharing','Ni objectif de pipeline ni opportunité renseignés.');
+  if(!has(p.enterpriseAccess)) add('no_client_access','Aucun accès à des comptes Enterprise/Mid-Market renseigné.');
+  return out;
+}
+function applySuggestion(key){ setPenalty(key,true); }
+function applyAllSuggestions(){
+  suggestPenalties(state).forEach(s=>{ state.penalties=state.penalties||{}; state.penalties[s.key]=true; if(!state.penaltySeverity[s.key]) state.penaltySeverity[s.key]='max'; });
+  saveState(); renderAssessment(); renderHeaderScore();
+}
+function criterionLabel(key){
+  for(const pk of Object.keys(PILLARS)){ const c=PILLARS[pk].criteria.find(x=>x.k===key); if(c) return {label:c.l, pillar:PILLARS[pk].label}; }
+  return {label:key, pillar:''};
+}
+function notesList(state){
+  return Object.keys(state.notes||{}).filter(k=>state.notes[k]).map(k=>({key:k, note:state.notes[k], ...criterionLabel(k)}));
+}
+
+/* ============================== SCREEN 3 - DECISION ============================== */
+
+function pillarArr(c){
+  return [
+    {k:'Skill', v:c.skill, max:30, color:PILLARS.skill.color},
+    {k:'Scale', v:c.scale, max:25, color:PILLARS.scale.color},
+    {k:'Will', v:c.will, max:30, color:PILLARS.will.color},
+    {k:'Strategic Fit', v:c.fit, max:15, color:PILLARS.fit.color},
+  ];
+}
+function weakestPillar(c){ return pillarArr(c).slice().sort((a,b)=>(a.v/a.max)-(b.v/b.max))[0]; }
+function strongestPillar(c){ return pillarArr(c).slice().sort((a,b)=>(b.v/b.max)-(a.v/a.max))[0]; }
+function activePenalties(){ return PENALTIES.filter(p=> state.penalties && state.penalties[p.k]); }
+
+function renderDecision(){
+  const c = computeAll(state);
+  const cls = classify(c.final);
+  const weak = weakestPillar(c), strong = strongestPillar(c);
+  const pName = state.profile.partnerName || '(nom non renseigné)';
+  const pType = state.profile.partnerType || 'type non renseigné';
+  const col = catColor(cls.cat);
+
+  const radarVals = pillarArr(c).map(p=>({label:p.k==='Strategic Fit'?'Fit':p.k, ratio:p.v/p.max, color:p.color}));
+
+  let html = `<div class="card"><h2><span class="accent"></span>Vue d'ensemble</h2>
+    <div class="scorehero">
+      <div class="gauge">${gaugeSVG(c.final,col,150)}<div class="center"><div class="n" style="color:${col}">${c.final.toFixed(0)}</div><div class="d">/100</div></div></div>
+      <div style="flex:1;min-width:200px">
+        <div class="catbadge" style="background:${col};color:#0d0d0f">${cls.cat}</div>${c.provisional?' <span class="prov-tag">score provisoire</span>':''}
+        <p style="margin:12px 0 4px;font-size:13.5px">Décision recommandée : <b style="color:${col}">${cls.verdict}</b></p>
+        <p style="font-size:12.5px;color:var(--muted)">Priorité ${cls.priority} · ${cls.tier}</p>
+        <div style="margin-top:8px"><span class="conf ${c.confidence}">${confLabel(c.confidence)} — ${Math.round(c.fillRatio*100)}% des critères renseignés</span></div>
+        ${c.provisional?`<div class="prov-note">Score provisoire : moins de 50 % des critères sont renseignés. À traiter comme une hypothèse de travail, pas comme une décision ferme, tant que l'évaluation n'est pas complétée.</div>`:''}
+      </div>
+      <div class="radar-wrap">${radarSVG(radarVals,240)}</div>
+    </div>
+  </div>`;
+
+  html += `<div class="card exec"><h2><span class="accent"></span>1. Executive Summary</h2><p>
+  <b>${pName}</b> (${pType}${state.profile.country? ', '+state.profile.country:''}) obtient <b>${c.final.toFixed(0)}/100</b>, dans la catégorie <b>${cls.cat}</b>.
+  Point fort principal : <b>${strong.k}</b> (${strong.v}/${strong.max}). Point le plus faible : <b>${weak.k}</b> (${weak.v}/${weak.max}) — première zone à faire progresser ou à challenger en meeting.
+  ${activePenalties().length? `${activePenalties().length} red flag${activePenalties().length>1?'s':''} identifié${activePenalties().length>1?'s':''}, à clarifier avant tout investissement.` : `Aucun red flag coché — à confirmer par les faits, pas les déclarations.`}
+  Décision : <b>${cls.verdict}</b>.
+  </p></div>`;
+
+  html += `<div class="card"><h2><span class="accent"></span>2. Scorecard</h2>
+  <table><thead><tr><th>Dimension</th><th>Score</th><th>Max</th><th>Progression</th><th>Niveau de preuve</th></tr></thead><tbody>
+  ${scorecardRow('Skill', c.skill, 30, 'skill')}
+  ${scorecardRow('Scale', c.scale, 25, 'scale')}
+  ${scorecardRow('Will', c.will, 30, 'will')}
+  ${scorecardRow('Strategic Fit', c.fit, 15, 'fit')}
+  <tr><td>Bonus Pépite</td><td colspan="2">${c.bonus>0?'+':''}${c.bonus}</td><td></td><td>${Object.values(state.bonuses||{}).filter(Boolean).length} signaux</td></tr>
+  <tr><td>Pénalités</td><td colspan="2" style="color:var(--red)">${c.penalty}</td><td></td><td>${activePenalties().length} red flag(s)</td></tr>
+  <tr style="font-weight:800"><td>Score final</td><td colspan="2" style="color:${col}">${c.final.toFixed(0)} / 100</td><td></td><td>—</td></tr>
+  </tbody></table></div>`;
+
+  html += `<div class="card"><h2><span class="accent"></span>3. Classification</h2>
+    <table>
+      <tr><td>Niveau de priorité</td><td><b>${cls.priority}</b></td></tr>
+      <tr><td>Modèle de partenariat recommandé</td><td>${recommendedModel(state,c)}</td></tr>
+      <tr><td>Tier potentiel</td><td>${cls.tier}</td></tr>
+      <tr><td>Horizon de génération de pipeline</td><td>${pipelineHorizon(cls.cat)}</td></tr>
+      <tr><td>Score de confiance</td><td><span class="conf ${c.confidence}">${confLabel(c.confidence)} (${Math.round(c.fillRatio*100)}%)</span></td></tr>
+    </table>
+  </div>`;
+
+  html += renderOpportunities(state,c);
+  html += renderRisks(state,c);
+  html += renderJustifications(state);
+
+  html += `<div class="card"><div class="navbtns">
+    <button class="btn" onclick="saveToPortfolio()">Enregistrer dans le portfolio</button>
+    <button class="btn secondary" onclick="goTo('meeting')">Préparer le prochain meeting →</button>
+    <button class="btn ghost" onclick="window.print()">Exporter le rapport (PDF)</button>
+  </div></div>`;
+
+  document.getElementById('main').innerHTML = html;
+}
+
+function confLabel(c){ return c==='high'?'Haute confiance':(c==='mid'?'Confiance moyenne':'Faible confiance'); }
+function catColor(cat){
+  if(cat==='Strategic Growth Partner') return 'var(--green)';
+  if(cat==='High-Potential Partner') return '#8fd6b0';
+  if(cat==='Incubate and Validate') return 'var(--yellow)';
+  if(cat==='Opportunistic / Referral Only') return '#f0a13c';
+  return 'var(--red)';
+}
+function scorecardRow(label,val,max,pk){
+  const ratio = pillarFillRatio(state,pk);
+  const lvl = ratio>0.8?'Confirmé':(ratio>=0.4?'Déclaré':'Hypothèse / info manquante');
+  const pct=Math.round(val/max*100);
+  return `<tr><td>${label}</td><td>${val}</td><td>${max}</td><td><div class="bar" style="width:90px"><i style="width:${pct}%;background:${PILLARS[pk].color}"></i></div></td><td>${lvl}</td></tr>`;
+}
+function recommendedModel(state,c){
+  const motion = state.profile.dominantMotion;
+  if(c.final>=70) return motion? `${motion} avec co-investissement Grafana (enablement, MDF, deal registration prioritaire)` : 'Partenariat investi (co-sell / resale) — motion à confirmer';
+  if(c.final>=55) return 'Partenariat testé sur un périmètre limité (workshop / campagne pilote)';
+  if(c.final>=40) return 'Referral uniquement, support réactif';
+  return 'Relation légère, sans investissement Channel';
+}
+function pipelineHorizon(cat){
+  if(cat==='Strategic Growth Partner') return '0–6 mois';
+  if(cat==='High-Potential Partner') return '6–9 mois';
+  if(cat==='Incubate and Validate') return '9–12 mois, à revalider';
+  if(cat==='Opportunistic / Referral Only') return 'Opportuniste, non planifiable';
+  return 'Non pertinent en l\'état';
+}
+
+function renderOpportunities(state,c){
+  const motion = state.profile.dominantMotion || 'motion à préciser';
+  const named = [state.profile.namedAccount1,state.profile.namedAccount2,state.profile.namedAccount3].filter(Boolean);
+  const competitors = Array.isArray(state.profile.competitors)?state.profile.competitors:[];
+  const opps = [
+    {title:'Déplacement concurrentiel', motion:'Migration / remplacement',
+      segments: competitors.length? competitors.filter(x=>x!=='Open-source only').join(', ')||'à confirmer' : 'à confirmer en meeting',
+      valuePartner:'Marge sur services de migration + repositionnement techno auprès du client',
+      valueGrafana:'Pipeline qualifié sur comptes déjà équipés d\'un concurrent, cycle accéléré par la douleur existante (coût, lock-in)',
+      proof: competitors.length? `Le partenaire déclare vendre ${competitors.join(', ')} — à transformer en migration Grafana.` : 'Donnée manquante — à valider en meeting.',
+      action:'Demander les 2-3 comptes où la pression de coût ou de lock-in est la plus forte.'},
+    {title:'Comptes nommés existants', motion: motion,
+      segments: named.length? named.join(', ') : 'aucun compte nommé communiqué',
+      valuePartner:'Élargissement du panier chez des comptes déjà en relation, sans prospection',
+      valueGrafana:'Entrée rapide dans des comptes Enterprise via un tiers de confiance installé',
+      proof: named.length? `${named.length} compte(s) nommé(s) communiqué(s).` : 'Aucun compte nommé — signal de Will faible à creuser.',
+      action: named.length? 'Qualifier chaque compte nommé (budget, sponsor, timeline).' : 'Exiger 3 comptes nommés avant d\'engager plus de ressources Channel.'},
+    {title:'Offre de services managés / observabilité', motion:'Managed services / Practice',
+      segments: state.profile.sectors || 'segments à préciser',
+      valuePartner:'Revenu récurrent différenciant face aux généralistes',
+      valueGrafana:'Adoption durable, moindre churn, ambassadeur technique',
+      proof:'À valider : practice observabilité dédiée, pas seulement une capacité théorique.',
+      action:'Demander le business plan ou la fiche d\'offre packagée autour de Grafana.'}
+  ];
+  let html = `<div class="card"><h2><span class="accent"></span>4. Pourquoi ce partenaire pourrait gagner avec Grafana</h2>`;
+  opps.forEach(o=>{
+    html += `<div class="flag low"><div class="head"><span class="name">${o.title}</span><span class="pts">${o.motion}</span></div>
+    <p><b>Clients / segments :</b> ${o.segments}</p>
+    <p><b>Valeur partenaire :</b> ${o.valuePartner}</p>
+    <p><b>Valeur Grafana :</b> ${o.valueGrafana}</p>
+    <p><b>Preuve disponible :</b> ${o.proof}</p>
+    <p><b>Prochaine action :</b> ${o.action}</p></div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function renderJustifications(state){
+  const notes = notesList(state);
+  if(!notes.length) return '';
+  let html = `<div class="card"><h2><span class="accent"></span>Preuves & justifications</h2>
+  <p class="hint">Éléments de preuve saisis sur les critères de scoring — la base factuelle de l'évaluation.</p>
+  <table><thead><tr><th>Pilier</th><th>Critère</th><th>Preuve / note</th></tr></thead><tbody>
+  ${notes.map(n=>`<tr><td>${n.pillar}</td><td>${n.label}</td><td>${escapeHtml(n.note)}</td></tr>`).join('')}
+  </tbody></table></div>`;
+  return html;
+}
+function renderRisks(state,c){
+  const active = activePenalties();
+  let html = `<div class="card"><h2><span class="accent" style="background:var(--red)"></span>5. Risques et Red Flags</h2>`;
+  if(!active.length){
+    html += `<p class="hint">Aucun red flag coché. Cela ne signifie pas absence de risque — vérifiez que les preuves (comptes nommés, sponsor, formation, pipeline partagé) sont documentées avant de conclure.</p>`;
+  } else {
+    const order = {crit:0,high:1,med:2,low:3};
+    active.slice().sort((a,b)=>order[a.sev]-order[b.sev]).forEach(p=>{
+      html += `<div class="flag ${p.sev}"><div class="head"><span class="name">${p.l}</span><span class="badge ${p.sev}">${sevText(p.sev)}</span></div>
+      <p><b>Impact potentiel :</b> ${riskImpact(p.k)}</p>
+      <p><b>Question à poser :</b> ${riskQuestion(p.k)}</p>
+      <p><b>Mitigation :</b> ${riskMitigation(p.k)}</p></div>`;
+    });
+  }
+  html += `</div>`;
+  return html;
+}
+function sevText(s){ return s==='crit'?'Critique':(s==='high'?'Élevé':(s==='med'?'Moyen':'Faible')); }
+function riskImpact(k){
+  const map = {
+    no_sponsor:'Aucune capacité à débloquer des ressources internes en cas de blocage — le partenariat reste opérationnel sans portage exécutif.',
+    no_named_accounts:'Absence de preuve concrète que le partenaire peut générer du pipeline réel à court terme.',
+    no_training:'Risque de mauvaise mise en œuvre client et de messaging incorrect sur le terrain.',
+    no_followup:'Signal fort de faible fiabilité d\'exécution — les engagements ne se traduisent pas en actions.',
+    competitor_dependency:'Le partenaire peut prioriser un concurrent stratégique au détriment de Grafana en cas de conflit.',
+    no_pipeline_sharing:'Impossibilité de mesurer et de prévoir la contribution réelle du partenaire.',
+    discount_focus:'Motivé par la marge plus que par la valeur produit — risque de churn si un concurrent offre mieux.',
+    exclusivity_demand:'Cherche à sécuriser un avantage sans preuve d\'investissement réciproque.',
+    no_capability_no_will:'Aucun chemin crédible vers un partenariat fonctionnel à court ou moyen terme.',
+    no_client_access:'N\'apporte pas d\'accès différenciant au marché cible.',
+    inconsistent_info:'Fiabilité générale des informations déclarées à remettre en question.',
+    legal_risk:'Risque de réputation ou d\'exposition juridique — nécessite validation Legal/Compliance avant toute poursuite.',
+    fulfillment_only:'N\'apporte pas de valeur commerciale ou technique, seulement un mécanisme d\'achat.',
+    too_many_competitors:'Dilution de l\'attention commerciale sur trop de vendors concurrents.',
+    low_responsiveness:'Cadence d\'exécution trop lente pour tenir un plan d\'activation à 90 jours.',
+    no_action_60d:'Le partenariat stagne — aucun signal de traction depuis deux mois.'
+  };
+  return map[k]||'Impact à qualifier.';
+}
+function riskQuestion(k){
+  const map = {
+    no_sponsor:'Qui, dans votre organisation, est prêt à sponsoriser ce partenariat au niveau direction ?',
+    no_named_accounts:'Pouvez-vous nommer trois comptes précis pour les 90 prochains jours ?',
+    no_training:'Combien de personnes êtes-vous prêts à inscrire à l\'enablement Grafana, et quand ?',
+    no_followup:'Quelles actions convenues lors du dernier échange n\'ont pas été réalisées, et pourquoi ?',
+    competitor_dependency:'Quelle part de votre CA observabilité dépend aujourd\'hui de ce concurrent ?',
+    no_pipeline_sharing:'Seriez-vous prêts à partager votre pipeline Grafana via deal registration ?',
+    discount_focus:'Au-delà de la marge, quelle valeur client voyez-vous dans Grafana ?',
+    exclusivity_demand:'Quel investissement concret proposez-vous en échange de l\'exclusivité demandée ?',
+    no_capability_no_will:'Quel est votre plan pour construire une capacité Grafana, même minimale ?',
+    no_client_access:'Quels clients finaux pouvez-vous nous présenter directement ?',
+    inconsistent_info:'Pouvez-vous clarifier les écarts entre vos différentes déclarations ?',
+    legal_risk:'Quels éléments pouvez-vous fournir pour lever ce point avec notre équipe Legal/Compliance ?',
+    fulfillment_only:'Quel rôle actif jouez-vous dans la vente, au-delà de la facturation ?',
+    too_many_competitors:'Quelle priorité réelle donnez-vous à Grafana parmi vos vendors observabilité ?',
+    low_responsiveness:'Quel délai de réponse pouvez-vous garantir sur les prochaines étapes ?',
+    no_action_60d:'Quelle action concrète pouvez-vous exécuter dans les 15 jours pour relancer la dynamique ?'
+  };
+  return map[k]||'À définir.';
+}
+function riskMitigation(k){
+  const map = {
+    no_sponsor:'Conditionner la suite à l\'identification d\'un sponsor exécutif avant la prochaine revue.',
+    no_named_accounts:'Ne pas investir de ressources Channel supplémentaires avant obtention de 3 comptes nommés.',
+    no_training:'Fixer un objectif de certification daté avec un nombre minimum de personnes.',
+    no_followup:'Réduire la cadence d\'investissement jusqu\'à preuve d\'exécution sur une action simple.',
+    competitor_dependency:'Clarifier le positionnement Grafana vs le concurrent dans le pitch du partenaire.',
+    no_pipeline_sharing:'Rendre le partage de pipeline une condition d\'accès au tier supérieur.',
+    discount_focus:'Repositionner la conversation sur la valeur client et les cas d\'usage, pas la remise.',
+    exclusivity_demand:'Refuser l\'exclusivité tant que les preuves d\'investissement ne sont pas là.',
+    no_capability_no_will:'Basculer en modèle referral uniquement, sans investissement Channel.',
+    no_client_access:'Tester l\'accès réel via une introduction concrète à un compte.',
+    inconsistent_info:'Croiser les déclarations avec des sources tierces (LinkedIn, site, références clients).',
+    legal_risk:'Escalade immédiate vers Legal/Compliance avant toute poursuite commerciale.',
+    fulfillment_only:'Limiter le partenariat à un rôle de facturation sans investissement Channel.',
+    too_many_competitors:'Demander un engagement explicite de priorisation Grafana sur un segment donné.',
+    low_responsiveness:'Fixer une cadence de gouvernance stricte (point bi-hebdomadaire) avec critère de sortie.',
+    no_action_60d:'Fixer une date de réévaluation à 30 jours avec une action minimale exigée.'
+  };
+  return map[k]||'À définir.';
+}
+
+function saveToPortfolio(){
+  const c = computeAll(state);
+  const cls = classify(c.final);
+  let list = loadPortfolio();
+  const id = state.profile.partnerName ? state.profile.partnerName.toLowerCase().trim() : ('partner_'+Date.now());
+  const now = new Date().toISOString();
+  const idx = list.findIndex(p=>p.id===id);
+  // Carry over history from any previous save of the same partner.
+  const prevHistory = (idx>=0 && Array.isArray(list[idx].history)) ? list[idx].history : [];
+  const history = prevHistory.concat([{at:now, final:c.final, skill:c.skill, scale:c.scale, will:c.will, fit:c.fit}]).slice(-24);
+  // Store FULL snapshot so it can be fully restored later.
+  const entry = {
+    id,
+    profile:{...state.profile},
+    scores:{...state.scores},
+    notes:{...state.notes},
+    penalties:{...state.penalties},
+    penaltySeverity:{...state.penaltySeverity},
+    bonuses:{...state.bonuses},
+    computed:{...c},
+    category:cls.cat, verdict:cls.verdict,
+    history,
+    savedAt:now
+  };
+  if(idx>=0) list[idx]=entry; else list.push(entry);
+  savePortfolio(list);
+  const delta = prevHistory.length ? (c.final - prevHistory[prevHistory.length-1].final) : 0;
+  alert(`Partenaire enregistré (v${history.length}).`+(prevHistory.length?` Évolution du score : ${delta>=0?'+':''}${delta.toFixed(0)} pt depuis la dernière sauvegarde.`:' Évaluation complète archivée et rechargeable.'));
+  render();
+}
+
+/* ============================== SCREEN 4 - MEETING PREP ============================== */
+
+function renderMeeting(){
+  const c = computeAll(state);
+  const cls = classify(c.final);
+  const pName = state.profile.partnerName || 'ce partenaire';
+  const weak = weakestPillar(c);
+
+  let html = `<div class="card"><h2><span class="accent"></span>6. Dix questions à poser lors du prochain meeting</h2>
+  <ol class="qbank">${QUESTION_BANK.map(q=>`<li>${q.q(state)}</li>`).join('')}</ol></div>`;
+
+  const namedMissing = ![state.profile.namedAccount1,state.profile.namedAccount2,state.profile.namedAccount3].some(Boolean);
+  const sponsorMissing = !state.profile.execSponsor;
+
+  html += `<div class="card"><h2><span class="accent"></span>7. Meeting Preparation Brief</h2>
+  <table>
+    <tr><td>Objectif du meeting</td><td>${cls.cat==='Do Not Prioritize' ? 'Valider s\'il existe un deal concret qui justifie de poursuivre, sinon clore la relation.' : 'Obtenir des preuves concrètes sur la dimension la plus faible (' + weak.k + ') et sécuriser un engagement daté.'}</td></tr>
+    <tr><td>Résultat minimum attendu</td><td>${sponsorMissing? 'Nom d\'un sponsor exécutif engagé.' : ''} ${namedMissing? 'Trois comptes nommés avec contexte (budget, timeline).' : 'Confirmation ou mise à jour des comptes nommés existants.'} Une action datée avant la fin du meeting.</td></tr>
+    <tr><td>Interlocuteurs à influencer</td><td>${[state.profile.execSponsor,state.profile.salesChampion,state.profile.techChampion].filter(Boolean).join(', ') || 'Sponsor exécutif, champion commercial et champion technique — à identifier si absents.'}</td></tr>
+    <tr><td>Hypothèses à valider</td><td>Que ${pName} peut réellement vendre et délivrer Grafana (Skill), qu\'il va y investir du temps et du capital politique (Will), et qu\'il a un accès réel à des comptes pertinents (Scale / Fit).</td></tr>
+    <tr><td>Offre Grafana à positionner</td><td>${offerToPosition(state)}</td></tr>
+    <tr><td>Objections probables</td><td>${likelyObjections(state).join('<br><br>')}</td></tr>
+    <tr><td>Engagement à obtenir</td><td>Date précise pour la prochaine action, et si possible un compte nommé qualifié.</td></tr>
+  </table></div>
+  <div class="card"><div class="navbtns">
+    <button class="btn" onclick="goTo('plan')">Voir le plan d'activation →</button>
+    <button class="btn secondary" onclick="copyMeetingMarkdown()">Copier le brief (Markdown)</button>
+    <button class="btn ghost" onclick="downloadMeetingMarkdown()">Télécharger .md</button>
+  </div><span id="mdCopyMsg" style="font-size:12px;color:var(--green);margin-left:10px"></span></div>`;
+
+  document.getElementById('main').innerHTML = html;
+}
+
+function buildMeetingMarkdown(state){
+  const c = computeAll(state);
+  const cls = classify(c.final);
+  const pName = state.profile.partnerName || 'Partenaire';
+  const weak = weakestPillar(c), strong = strongestPillar(c);
+  const named = [state.profile.namedAccount1,state.profile.namedAccount2,state.profile.namedAccount3].filter(Boolean);
+  const L = [];
+  L.push(`# Brief meeting — ${pName}`);
+  L.push('');
+  L.push(`- **Score** : ${c.final.toFixed(0)}/100${c.provisional?' (provisoire)':''} — ${cls.cat}`);
+  L.push(`- **Décision recommandée** : ${cls.verdict}`);
+  L.push(`- **Point fort** : ${strong.k} (${strong.v}/${strong.max}) · **Point faible** : ${weak.k} (${weak.v}/${weak.max})`);
+  L.push(`- **Confiance** : ${confLabel(c.confidence)} (${Math.round(c.fillRatio*100)}%)`);
+  L.push('');
+  L.push('## Objectif du meeting');
+  L.push(cls.cat==='Do Not Prioritize' ? 'Valider s\'il existe un deal concret qui justifie de poursuivre, sinon clore la relation.' : `Obtenir des preuves concrètes sur la dimension la plus faible (${weak.k}) et sécuriser un engagement daté.`);
+  L.push('');
+  L.push('## Interlocuteurs');
+  L.push([state.profile.execSponsor,state.profile.salesChampion,state.profile.techChampion].filter(Boolean).join(', ') || 'Sponsor exécutif, champion commercial et champion technique — à identifier.');
+  L.push('');
+  L.push('## Comptes nommés');
+  L.push(named.length? named.map(n=>`- ${n}`).join('\n') : '- Aucun compte nommé communiqué.');
+  L.push('');
+  L.push('## Offre Grafana à positionner');
+  L.push(offerToPosition(state));
+  L.push('');
+  L.push('## 10 questions à poser');
+  QUESTION_BANK.forEach((q,i)=> L.push(`${i+1}. ${q.q(state)}`));
+  L.push('');
+  L.push('## Objections probables');
+  likelyObjections(state).forEach(o=> L.push(`- ${o}`));
+  const active = activePenalties();
+  if(active.length){
+    L.push('');
+    L.push('## Red flags à clarifier');
+    active.forEach(p=> L.push(`- **${p.l}** — ${riskQuestion(p.k)}`));
+  }
+  L.push('');
+  L.push('## Engagement à obtenir');
+  L.push('Date précise pour la prochaine action, et si possible un compte nommé qualifié.');
+  return L.join('\n');
+}
+function copyMeetingMarkdown(){
+  const md = buildMeetingMarkdown(state);
+  const done = ()=>{ const el=document.getElementById('mdCopyMsg'); if(el){el.textContent='Copié ✓';setTimeout(()=>el.textContent='',2000);} };
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(md).then(done).catch(()=>fallbackCopy(md,done)); }
+  else fallbackCopy(md, done);
+}
+function fallbackCopy(text, done){
+  const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); done&&done(); }catch(e){ alert('Copie impossible — utilisez « Télécharger .md ».'); }
+  document.body.removeChild(ta);
+}
+function downloadMeetingMarkdown(){
+  const md = buildMeetingMarkdown(state);
+  const blob = new Blob([md],{type:'text/markdown'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  const name=(state.profile.partnerName||'partner').toLowerCase().replace(/[^a-z0-9]+/g,'-');
+  a.download=`brief-meeting-${name}.md`; a.click(); URL.revokeObjectURL(a.href);
+}
+function offerToPosition(state){
+  const motion = state.profile.dominantMotion;
+  if(motion==='Managed services') return 'Offre de managed observability packagée autour de Grafana Cloud (LGTM stack).';
+  if(motion==='Resale') return 'Grafana Cloud en revente avec marge, appuyé par du deal registration.';
+  if(motion==='Referral') return 'Programme referral avec commission sur closing par les équipes Grafana.';
+  if(motion==='Co-sell') return 'Motion co-sell conjointe sur comptes Enterprise partagés.';
+  return 'Grafana Cloud / LGTM stack comme alternative ouverte aux plateformes propriétaires (Datadog, Splunk, Dynatrace).';
+}
+function likelyObjections(state){
+  const comp = Array.isArray(state.profile.competitors)?state.profile.competitors:[];
+  const objs = [];
+  if(comp.length && !comp.includes('Open-source only')) objs.push(`« Nous avons déjà des revenus établis sur ${comp[0]}, pourquoi ajouter Grafana ? » → Positionner la complémentarité et les cas de migration/coexistence, pas un remplacement forcé.`);
+  objs.push('« Nous n\'avons pas encore de compétence Grafana en interne » → Proposer un plan d\'enablement daté avec objectif de certification.');
+  objs.push('« Nous voulons voir du pipeline avant d\'investir » → Proposer un pilote limité (1 workshop, 1 compte) avant tout engagement plus large.');
+  return objs;
+}
+
+/* ============================== SCREEN 5 - ACTIVATION PLAN ============================== */
+
+function renderPlan(){
+  const c = computeAll(state);
+  const cls = classify(c.final);
+  const pName = state.profile.partnerName || 'le partenaire';
+  const phases = buildPlan(state,c,cls,pName);
+
+  let html = `<div class="card"><h2><span class="accent"></span>8. Plan d'activation</h2><p class="hint">Catégorie : <b>${cls.cat}</b> — le plan est calibré en conséquence.</p>`;
+  phases.forEach(ph=>{
+    html += `<div class="planphase"><h4><span class="tag">${ph.title}</span></h4>
+    <div class="plangrid head"><div>Action</div><div>Owner</div><div>Échéance</div><div>Résultat attendu</div></div>
+    ${ph.items.map(it=>`<div class="plangrid"><div>${it.action}</div><div>${it.owner}</div><div>${it.due}</div><div>${it.result}</div></div>`).join('')}
+    </div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="card"><h2><span class="accent"></span>9. Conditions de poursuite</h2><p class="hint">Trois preuves que ${pName} doit fournir pour justifier un investissement Grafana supplémentaire :</p>
+  <ol class="qbank">${buildConditions(state,c).map(x=>`<li>${x}</li>`).join('')}</ol></div>`;
+
+  html += `<div class="card"><h2><span class="accent"></span>10. Verdict final</h2>
+  <div class="catbadge" style="background:${catColor(cls.cat)};color:#0d0d0f;font-size:16px">${cls.verdict}</div>
+  <p style="margin-top:12px;font-size:13.5px;line-height:1.65">${verdictJustification(state,c,cls)}</p>
+  <table style="margin-top:10px">
+    <tr><td>Prochaine décision à prendre</td><td>${nextDecision(cls)}</td></tr>
+    <tr><td>Date de réévaluation recommandée</td><td>${reevalDate(cls)}</td></tr>
+  </table></div>`;
+
+  document.getElementById('main').innerHTML = html;
+}
+
+function buildPlan(state,c,cls,pName){
+  const channelOwner = 'Channel Manager';
+  if(cls.cat==='Strategic Growth Partner' || cls.cat==='High-Potential Partner'){
+    return [
+      {title:'0 à 30 jours', items:[
+        {action:`Formaliser le sponsor exécutif et signer un business plan chiffré avec ${pName}`, owner:channelOwner, due:'J+30', result:'Business plan signé avec objectif de pipeline'},
+        {action:'Lancer l\'enablement (certifications) pour les personnes identifiées', owner:'Partner + Channel Manager', due:'J+30', result:`${state.profile.peopleToTrain||'N'} personnes inscrites à la formation`},
+        {action:'Qualifier les comptes nommés (budget, sponsor, timeline)', owner:'AE / Partner', due:'J+30', result:'3 comptes nommés qualifiés avec next step daté'},
+      ]},
+      {title:'31 à 60 jours', items:[
+        {action:'Organiser un premier workshop ou POC client conjoint', owner:'Solutions Engineering + Partner', due:'J+60', result:'1 workshop réalisé, 1 opportunité enregistrée (PIO)'},
+        {action:'Aligner Sales et Solutions Engineering sur les comptes prioritaires', owner:'Channel Manager', due:'J+60', result:'Plan de compte partagé sur 3+ comptes'},
+        {action:'Mettre en place le reporting de pipeline (deal registration)', owner:'Partner', due:'J+60', result:'Pipeline visible et partagé en revue'},
+      ]},
+      {title:'61 à 90 jours', items:[
+        {action:'Revue de gouvernance trimestrielle avec sponsor exécutif', owner:'Channel Manager + Sponsor', due:'J+90', result:'Objectif de pipeline 12 mois confirmé ou ajusté'},
+        {action:'Lancer une action marketing conjointe (webinar, campagne)', owner:'Marketing + Partner', due:'J+90', result:'1 action marketing exécutée, leads générés'},
+        {action:'Décider du tier définitif dans le Partner Program', owner:'Channel Manager', due:'J+90', result:'Tier confirmé avec engagements mesurables'},
+      ]},
+    ];
+  }
+  if(cls.cat==='Incubate and Validate'){
+    return [
+      {title:'0 à 30 jours', items:[
+        {action:'Tester le partenaire sur une opportunité ou un workshop unique', owner:channelOwner, due:'J+30', result:'1 preuve d\'exécution concrète obtenue'},
+        {action:'Demander 3 comptes nommés et un engagement de formation minimal', owner:'Partner', due:'J+30', result:'Comptes nommés + date de certification'},
+      ]},
+      {title:'31 à 60 jours', items:[
+        {action:'Observer la vitesse et la qualité d\'exécution sur l\'action test', owner:channelOwner, due:'J+60', result:'Décision Go/No-Go documentée'},
+      ]},
+      {title:'61 à 90 jours', items:[
+        {action:'Réévaluer le score complet avec les nouvelles preuves', owner:channelOwner, due:'J+90', result:'Nouveau score et décision de tier'},
+      ]},
+    ];
+  }
+  return [
+    {title:'0 à 30 jours', items:[
+      {action:'Basculer en modèle referral, support réactif uniquement', owner:channelOwner, due:'J+30', result:'Pas d\'investissement Channel supplémentaire engagé'},
+    ]},
+    {title:'31 à 60 jours', items:[
+      {action:'Surveiller l\'apparition d\'un deal concret ou d\'un changement de posture', owner:channelOwner, due:'J+60', result:'Décision de réévaluation ou de clôture'},
+    ]},
+    {title:'61 à 90 jours', items:[
+      {action:'Clôturer ou réévaluer selon signal reçu', owner:channelOwner, due:'J+90', result:'Statut final documenté'},
+    ]},
+  ];
+}
+function buildConditions(state,c){
+  const conditions = [];
+  const named = [state.profile.namedAccount1,state.profile.namedAccount2,state.profile.namedAccount3].filter(Boolean);
+  if(named.length<3) conditions.push(`Trois comptes nommés qualifiés (actuellement ${named.length}/3 communiqués)`);
+  if(!state.profile.execSponsor) conditions.push('Un sponsor exécutif présent à la prochaine revue trimestrielle');
+  conditions.push(`${state.profile.peopleToTrain||'Deux'} personnes inscrites et engagées dans l'enablement Grafana`);
+  if(conditions.length<3) conditions.push('Un workshop client planifié avec une date confirmée');
+  if(conditions.length<3) conditions.push('Une opportunité enregistrée (deal registration) avec le programme partenaire');
+  return conditions.slice(0,3);
+}
+function verdictJustification(state,c,cls){
+  const pName = state.profile.partnerName || 'Ce partenaire';
+  const weak = weakestPillar(c);
+  return `${pName} obtient ${c.final.toFixed(0)}/100, avec ${strongestPillar(c).k} comme point d'appui principal et ${weak.k} comme frein le plus important. `+
+  `${activePenalties().length? 'Des red flags actifs ('+activePenalties().length+') renforcent la prudence recommandée.' : 'Aucun red flag n\'est actif à ce stade, mais la confiance reste ' + confLabel(c.confidence).toLowerCase() + '.'} `+
+  `La recommandation « ${cls.verdict} » reflète un équilibre entre le potentiel démontré et le niveau de preuve disponible aujourd'hui.`;
+}
+function nextDecision(cls){
+  if(cls.verdict==='Invest Now') return 'Allouer un budget Channel dédié et nommer un owner interne unique.';
+  if(cls.verdict==='Activate with Conditions') return 'Conditionner tout investissement additionnel à l\'obtention des preuves listées en section 9.';
+  if(cls.verdict==='Incubate') return 'Lancer le test à échelle réduite avant toute décision de tier.';
+  if(cls.verdict==='Referral Only') return 'Documenter le statut referral et ne pas allouer de ressources Channel dédiées.';
+  return 'Ne pas poursuivre sauf apparition d\'un deal concret et qualifié.';
+}
+function reevalDate(cls){
+  const days = cls.verdict==='Invest Now'?90:(cls.verdict==='Activate with Conditions'?90:(cls.verdict==='Incubate'?60:30));
+  const d = new Date(); d.setDate(d.getDate()+days);
+  return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}) + ` (dans ${days} jours)`;
+}
+
+/* ============================== SCREEN 6 - PORTFOLIO ============================== */
+
+function renderPortfolio(){
+  const list = loadPortfolio();
+  let html = `<div class="card"><h2><span class="accent"></span>Portfolio des partenaires évalués</h2>`;
+  if(!list.length){
+    html += `<div class="empty">Aucun partenaire enregistré. Complétez une évaluation puis cliquez sur « Enregistrer dans le portfolio » à l'écran Décision.</div></div>`;
+    document.getElementById('main').innerHTML = html;
+    return;
+  }
+  html += `<p class="hint">Matrice Potentiel (Skill + Scale + Fit, /70) × Volonté (Will, /30). Couleur = catégorie.</p>
+  <div class="matrix" id="matrixWrap">
+    <div class="qlabel" style="top:6px;left:8px">Faible potentiel · Forte volonté</div>
+    <div class="qlabel" style="top:6px;right:8px;text-align:right">Fort potentiel · Forte volonté</div>
+    <div class="qlabel" style="bottom:6px;left:8px">Faible potentiel · Faible volonté</div>
+    <div class="qlabel" style="bottom:6px;right:8px;text-align:right">Fort potentiel · Faible volonté</div>
+    <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--border)"></div>
+    <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:var(--border)"></div>
+    ${list.map((p)=>{
+      const cc = p.computed||p.scores;
+      const potential = (cc.skill||0)+(cc.scale||0)+(cc.fit||0);
+      const will = cc.will||0;
+      const x = Math.max(4,Math.min(96, (potential/70)*100));
+      const y = Math.max(4,Math.min(96, 100-(will/30)*100));
+      const col = catColorHex(p.category);
+      return `<div class="dot" style="left:${x}%;top:${y}%;background:${col}" onclick="loadFromPortfolio('${p.id}')"><span class="dlabel">${escapeHtml(p.profile.partnerName||'?')} · ${(cc.final||0).toFixed(0)}</span></div>`;
+    }).join('')}
+  </div></div>`;
+
+  if(list.length>=2){
+    html += renderCompareCard(list);
+  }
+
+  html += `<div class="card"><div class="toolbar"><h2 style="margin:0"><span class="accent"></span>Liste</h2>
+    <button class="iconbtn" onclick="exportPortfolioCSV()">↓ Export CSV</button></div>
+  <table><thead><tr><th>Partenaire</th><th>Type</th><th>Score</th><th>Tendance</th><th>Catégorie</th><th>Enregistré</th><th></th></tr></thead><tbody>
+  ${list.slice().sort((a,b)=>((b.computed||b.scores).final||0)-((a.computed||a.scores).final||0)).map(p=>{
+    const cc=p.computed||p.scores;
+    return `<tr>
+    <td><b>${escapeHtml(p.profile.partnerName||'—')}</b></td>
+    <td>${escapeHtml(p.profile.partnerType||'—')}</td>
+    <td style="color:${catColorHex(p.category)};font-weight:700">${(cc.final||0).toFixed(0)}/100</td>
+    <td>${sparklineSVG(p.history, 90, 24, catColorHex(p.category))}</td>
+    <td>${p.category}</td>
+    <td>${new Date(p.savedAt).toLocaleDateString('fr-FR')}</td>
+    <td style="white-space:nowrap"><button class="btn secondary" onclick="loadFromPortfolio('${p.id}')">Ouvrir</button> <button class="btn ghost" onclick="deleteFromPortfolio('${p.id}')">Suppr.</button></td>
+  </tr>`;}).join('')}
+  </tbody></table></div>`;
+
+  document.getElementById('main').innerHTML = html;
+}
+function renderCompareCard(list){
+  compareSel = compareSel.filter(id=>list.some(p=>p.id===id));
+  const axes = ['Skill','Scale','Will','Fit'];
+  const maxes = {Skill:30,Scale:25,Will:30,Fit:15};
+  const selected = compareSel.map(id=>list.find(p=>p.id===id)).filter(Boolean).slice(0,3);
+  const series = selected.map((p,i)=>{ const cc=p.computed||p.scores; return {
+    name:p.profile.partnerName||'?', color:COMPARE_COLORS[i%3],
+    ratios:[(cc.skill||0)/maxes.Skill,(cc.scale||0)/maxes.Scale,(cc.will||0)/maxes.Will,(cc.fit||0)/maxes.Fit]
+  };});
+  let html = `<div class="card"><h2><span class="accent"></span>Comparaison (radar)</h2>
+  <p class="hint">Sélectionnez jusqu'à 3 partenaires pour superposer leurs profils Skill / Scale / Will / Fit.</p>
+  <div class="cmp-toolbar">${list.map(p=>{
+    const on = compareSel.includes(p.id);
+    const dis = !on && compareSel.length>=3;
+    return `<label style="${dis?'opacity:.4;cursor:not-allowed':''}"><input type="checkbox" ${on?'checked':''} ${dis?'disabled':''} onchange="toggleCompare('${p.id}')"> ${escapeHtml(p.profile.partnerName||'?')}</label>`;
+  }).join('')}</div>`;
+  if(series.length){
+    html += `<div style="display:flex;justify-content:center">${radarMultiSVG(axes, series, 320)}</div>
+    <div class="cmp-legend">${series.map(s=>`<div class="row"><span class="sw" style="background:${s.color}"></span>${escapeHtml(s.name)}</div>`).join('')}</div>`;
+  } else {
+    html += `<div class="empty">Cochez au moins un partenaire pour afficher le radar.</div>`;
+  }
+  html += `</div>`;
+  return html;
+}
+function toggleCompare(id){
+  const i = compareSel.indexOf(id);
+  if(i>=0) compareSel.splice(i,1);
+  else { if(compareSel.length>=3) return; compareSel.push(id); }
+  renderPortfolio();
+}
+function catColorHex(cat){
+  if(cat==='Strategic Growth Partner') return '#3cbf7a';
+  if(cat==='High-Potential Partner') return '#8fd6b0';
+  if(cat==='Incubate and Validate') return '#e0b23c';
+  if(cat==='Opportunistic / Referral Only') return '#f0a13c';
+  return '#e35b5b';
+}
+function loadFromPortfolio(id){
+  const list = loadPortfolio();
+  const entry = list.find(p=>p.id===id);
+  if(!entry) return;
+  if(!confirm('Charger ce partenaire remplacera l\'évaluation en cours. Continuer ?')) return;
+  // Full restore now that the snapshot stores everything.
+  state = Object.assign(freshState(), {
+    profile:{...entry.profile},
+    scores:{...(entry.scores||{})},
+    notes:{...(entry.notes||{})},
+    penalties:{...(entry.penalties||{})},
+    penaltySeverity:{...(entry.penaltySeverity||{})},
+    bonuses:{...(entry.bonuses||{})},
+    meta:{savedAt:entry.savedAt}
+  });
+  saveState();
+  currentScreen='decision';
+  render(); window.scrollTo({top:0});
+}
+function deleteFromPortfolio(id){
+  if(!confirm('Supprimer ce partenaire du portfolio ?')) return;
+  let list = loadPortfolio().filter(p=>p.id!==id);
+  savePortfolio(list); render();
+}
+function exportPortfolioCSV(){
+  const list = loadPortfolio();
+  const rows = [['Partenaire','Type','Pays','Score','Skill','Scale','Will','Fit','Categorie','Verdict','Enregistre']];
+  list.forEach(p=>{ const cc=p.computed||p.scores;
+    rows.push([p.profile.partnerName||'',p.profile.partnerType||'',p.profile.country||'',
+      (cc.final||0).toFixed(0),cc.skill||'',cc.scale||'',cc.will||'',cc.fit||'',p.category||'',p.verdict||'',
+      new Date(p.savedAt).toLocaleDateString('fr-FR')]);
+  });
+  const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\ufeff'+csv],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='gpae-portfolio.csv'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+/* ============================== MAIN RENDER ============================== */
+
+function render(){
+  renderNav();
+  renderHeaderScore();
+  if(currentScreen==='profile') renderProfile();
+  else if(currentScreen==='assessment') renderAssessment();
+  else if(currentScreen==='decision') renderDecision();
+  else if(currentScreen==='meeting') renderMeeting();
+  else if(currentScreen==='plan') renderPlan();
+  else if(currentScreen==='portfolio') renderPortfolio();
+}
+
+render();
+</script>
+</body>
+</html>
